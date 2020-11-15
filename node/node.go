@@ -1,14 +1,14 @@
 package node
 
 import (
-	"benzene/core/types"
 	"benzene/core"
+	"benzene/core/types"
 )
 
 // Node represents a protocol-participating node in the network
 type Node struct {
-	BlockChannel          chan *types.Block                 // The channel to send newly proposed blocks
-	ConfirmedBlockChannel chan *types.Block                 // The channel to send confirmed blocks
+	BlockChannel          chan *types.Block // The channel to send newly proposed blocks
+	ConfirmedBlockChannel chan *types.Block // The channel to send confirmed blocks
 }
 
 // Blockchain returns the blockchain for the node's current shard.

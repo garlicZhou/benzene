@@ -1,15 +1,15 @@
-package block
+package types
 
 import (
 	"encoding/json"
 	"math/big"
 	"unsafe"
-	
+
 	"golang.org/x/crypto/sha3"
 
-	"github.com/rs/zerolog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/rs/zerolog"
 )
 
 type Header struct {
@@ -17,11 +17,12 @@ type Header struct {
 }
 
 type headerFields struct {
-	ParentHash          common.Hash     `json:"parentHash"      gencodec:"required"`
-	Number              *big.Int        `json:"number"          gencodec:"required"`
-	Time                *big.Int        `json:"timestamp"       gencodec:"required"`
-	ShardID             uint32          `json:"shardID"         gencodec:"required"`
-	Signature           [96]byte        `json:"signature"       gencodec:"required"`
+	ParentHash common.Hash `json:"parentHash"       gencodec:"required"`
+	Number     *big.Int    `json:"number"           gencodec:"required"`
+	Time       *big.Int    `json:"timestamp"        gencodec:"required"`
+	ShardID    uint32      `json:"shardID"          gencodec:"required"`
+	Signature  [96]byte    `json:"signature"        gencodec:"required"`
+	TxHash     common.Hash `json:"transactionsRoot" gencodec:"required"`
 }
 
 func (h Header) String() string {
@@ -106,4 +107,12 @@ func (h *Header) Signature() [96]byte {
 
 func (h *Header) SetSignature(newSignature [96]byte) {
 	h.fields.Signature = newSignature
+}
+
+func (h *Header) TxHash() common.Hash {
+	return h.fields.TxHash
+}
+
+func (h *Header) SetTxHash(newTxHash common.Hash) {
+	h.fields.TxHash = newTxHash
 }
