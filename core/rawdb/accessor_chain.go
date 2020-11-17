@@ -36,6 +36,24 @@ func ReadCanonicalHash(db DatabaseReader, number uint64) common.Hash {
 	return common.BytesToHash(data)
 }
 
+// WriteCanonicalHash stores the hash assigned to a canonical block number.
+func WriteCanonicalHash(db DatabaseWriter, hash common.Hash, number uint64) error {
+	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
+		utils.Logger().Error().Msg("Failed to store number to hash mapping")
+		return err
+	}
+	return nil
+}
+
+// DeleteCanonicalHash removes the number to hash canonical mapping.
+func DeleteCanonicalHash(db DatabaseDeleter, number uint64) error {
+	if err := db.Delete(headerHashKey(number)); err != nil {
+		utils.Logger().Error().Msg("Failed to delete number to hash mapping")
+		return err
+	}
+	return nil
+}
+
 // ReadHeaderNumber returns the header number assigned to a hash.
 func ReadHeaderNumber(db DatabaseReader, hash common.Hash) *uint64 {
 	data, _ := db.Get(headerNumberKey(hash))
@@ -44,6 +62,60 @@ func ReadHeaderNumber(db DatabaseReader, hash common.Hash) *uint64 {
 	}
 	number := binary.BigEndian.Uint64(data)
 	return &number
+}
+
+// ReadHeadHeaderHash retrieves the hash of the current canonical head header.
+func ReadHeadHeaderHash(db DatabaseReader) common.Hash {
+	data, _ := db.Get(headHeaderKey)
+	if len(data) == 0 {
+		return common.Hash{}
+	}
+	return common.BytesToHash(data)
+}
+
+// WriteHeadHeaderHash stores the hash of the current canonical head header.
+func WriteHeadHeaderHash(db DatabaseWriter, hash common.Hash) error {
+	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
+		utils.Logger().Error().Msg("Failed to store last header's hash")
+		return err
+	}
+	return nil
+}
+
+// ReadHeadBlockHash retrieves the hash of the current canonical head block.
+func ReadHeadBlockHash(db DatabaseReader) common.Hash {
+	data, _ := db.Get(headBlockKey)
+	if len(data) == 0 {
+		return common.Hash{}
+	}
+	return common.BytesToHash(data)
+}
+
+// WriteHeadBlockHash stores the head block's hash.
+func WriteHeadBlockHash(db DatabaseWriter, hash common.Hash) error {
+	if err := db.Put(headBlockKey, hash.Bytes()); err != nil {
+		utils.Logger().Error().Msg("Failed to store last block's hash")
+		return err
+	}
+	return nil
+}
+
+// ReadHeadFastBlockHash retrieves the hash of the current fast-sync head block.
+func ReadHeadFastBlockHash(db DatabaseReader) common.Hash {
+	data, _ := db.Get(headFastBlockKey)
+	if len(data) == 0 {
+		return common.Hash{}
+	}
+	return common.BytesToHash(data)
+}
+
+// WriteHeadFastBlockHash stores the hash of the current fast-sync head block.
+func WriteHeadFastBlockHash(db DatabaseWriter, hash common.Hash) error {
+	if err := db.Put(headFastBlockKey, hash.Bytes()); err != nil {
+		utils.Logger().Error().Msg("Failed to store last fast block's hash")
+		return err
+	}
+	return nil
 }
 
 // ReadHeaderRLP retrieves a block header in its raw RLP database encoding.

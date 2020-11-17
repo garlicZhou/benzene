@@ -1,22 +1,84 @@
 package core
 
 import (
+	consensus_engine "benzene/consensus/engine"
 	"benzene/core/rawdb"
 	"benzene/core/types"
 	"benzene/params"
+
+	crand "crypto/rand"
+	"math"
+	"math/big"
+	mrand "math/rand"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	lru "github.com/hashicorp/golang-lru"
 )
 
+const (
+	headerCacheLimit = 512
+	tdCacheLimit     = 1024
+	numberCacheLimit = 2048
+)
+
 type HeaderChain struct {
 	config *params.ChainConfig
+
+	chainDb       ethdb.Database
+	genesisHeader *types.Header
+
+	currentHeader     atomic.Value // Current head of the header chain (may be above the block chain!)
+	currentHeaderHash common.Hash  // Hash of the current head of the header chain (prevent recomputing all the time)
 
 	headerCache *lru.Cache // Cache for the most recent block headers
 	numberCache *lru.Cache // Cache for the most recent block numbers
 
-	chainDb ethdb.Database
+	procInterrupt func() bool
+
+	rand   *mrand.Rand
+	engine consensus_engine.Engine
+}
+
+// NewHeaderChain creates a new HeaderChain structure.
+//  getValidator should return the parent's validator
+//  procInterrupt points to the parent's interrupt semaphore
+//  wg points to the parent's shutdown wait group
+func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine consensus_engine.Engine, procInterrupt func() bool) (*HeaderChain, error) {
+	headerCache, _ := lru.New(headerCacheLimit)
+	numberCache, _ := lru.New(numberCacheLimit)
+
+	// Seed a fast but crypto originating random generator
+	seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		return nil, err
+	}
+
+	hc := &HeaderChain{
+		config:        config,
+		chainDb:       chainDb,
+		headerCache:   headerCache,
+		numberCache:   numberCache,
+		procInterrupt: procInterrupt,
+		rand:          mrand.New(mrand.NewSource(seed.Int64())),
+		engine:        engine,
+	}
+
+	hc.genesisHeader = hc.GetHeaderByNumber(0)
+	if hc.genesisHeader == nil {
+		return nil, ErrNoGenesis
+	}
+
+	hc.currentHeader.Store(hc.genesisHeader)
+	if head := rawdb.ReadHeadBlockHash(chainDb); head != (common.Hash{}) {
+		if chead := hc.GetHeaderByHash(head); chead != nil {
+			hc.currentHeader.Store(chead)
+		}
+	}
+	hc.currentHeaderHash = hc.CurrentHeader().Hash()
+
+	return hc, nil
 }
 
 // GetBlockNumber retrieves the block number belonging to the given hash
@@ -75,4 +137,21 @@ func (hc *HeaderChain) GetHeaderByNumber(number uint64) *types.Header {
 		return nil
 	}
 	return hc.GetHeader(hash, number)
+}
+
+// CurrentHeader retrieves the current head header of the canonical chain. The
+// header is retrieved from the HeaderChain's internal cache.
+func (hc *HeaderChain) CurrentHeader() *types.Header {
+	return hc.currentHeader.Load().(*types.Header)
+}
+
+// SetCurrentHeader sets the current head header of the canonical chain.
+func (hc *HeaderChain) SetCurrentHeader(head *types.Header) error {
+	if err := rawdb.WriteHeadHeaderHash(hc.chainDb, head.Hash()); err != nil {
+		return err
+	}
+
+	hc.currentHeader.Store(head)
+	hc.currentHeaderHash = head.Hash()
+	return nil
 }

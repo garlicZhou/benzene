@@ -18,11 +18,12 @@ type Header struct {
 
 type headerFields struct {
 	ParentHash common.Hash `json:"parentHash"       gencodec:"required"`
+	Root       common.Hash `json:"stateRoot"        gencodec:"required"`
+	TxHash     common.Hash `json:"transactionsRoot" gencodec:"required"`
 	Number     *big.Int    `json:"number"           gencodec:"required"`
 	Time       *big.Int    `json:"timestamp"        gencodec:"required"`
 	ShardID    uint32      `json:"shardID"          gencodec:"required"`
 	Signature  [96]byte    `json:"signature"        gencodec:"required"`
-	TxHash     common.Hash `json:"transactionsRoot" gencodec:"required"`
 }
 
 func (h Header) String() string {
@@ -75,6 +76,16 @@ func (h *Header) ParentHash() common.Hash {
 
 func (h *Header) SetParentHash(newParentHash common.Hash) {
 	h.fields.ParentHash = newParentHash
+}
+
+// Root is the state (account) trie root hash.
+func (h *Header) Root() common.Hash {
+	return h.fields.Root
+}
+
+// SetRoot sets the state trie root hash field.
+func (h *Header) SetRoot(newRoot common.Hash) {
+	h.fields.Root = newRoot
 }
 
 func (h *Header) Number() *big.Int {

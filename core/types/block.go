@@ -97,12 +97,25 @@ func (b *Block) Transactions() Transactions {
 	return b.transactions
 }
 
+// Number returns header number.
+func (b *Block) Number() *big.Int { return b.header.Number() }
+
 // Time is header time.
 func (b *Block) Time() *big.Int { return b.header.Time() }
 
 // NumberU64 is the header number in uint64.
 func (b *Block) NumberU64() uint64 { return b.header.Number().Uint64() }
 
+// ShardID is the header ShardID
+func (b *Block) ShardID() uint32 { return b.header.ShardID() }
+
+// ParentHash return header parent hash.
+func (b *Block) ParentHash() common.Hash { return b.header.ParentHash() }
+
+// TxHash returns header tx hash.
+func (b *Block) TxHash() common.Hash { return b.header.TxHash() }
+
+// Header returns header.
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
