@@ -106,8 +106,11 @@ func (b *Block) Time() *big.Int { return b.header.Time() }
 // NumberU64 is the header number in uint64.
 func (b *Block) NumberU64() uint64 { return b.header.Number().Uint64() }
 
-// ShardID is the header ShardID
+// ShardID is the header ShardID.
 func (b *Block) ShardID() uint32 { return b.header.ShardID() }
+
+// Root is the header root.
+func (b *Block) Root() common.Hash { return b.header.Root() }
 
 // ParentHash return header parent hash.
 func (b *Block) ParentHash() common.Hash { return b.header.ParentHash() }
