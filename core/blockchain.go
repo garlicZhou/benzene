@@ -3,10 +3,12 @@ package core
 import (
 	consensus_engine "benzene/consensus/engine"
 	"benzene/core/rawdb"
+	"benzene/core/state"
 	"benzene/core/types"
 	"benzene/params"
 	"benzene/utils"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"os"
 	"strings"
@@ -20,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/common/prque"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 
@@ -173,15 +174,15 @@ func (bc *BlockChain) loadLastState() error {
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
 
+	// TODO: Figure out why
 	// We don't need the following as we want the current header and block to be consistent
 	// Restore the last known head header
-	//currentHeader := currentBlock.Header()
+	currentHeader := currentBlock.Header()
 	//if head := rawdb.ReadHeadHeaderHash(bc.db); head != (common.Hash{}) {
 	//	if header := bc.GetHeaderByHash(head); header != nil {
 	//		currentHeader = header
 	//	}
 	//}
-	currentHeader := currentBlock.Header()
 	if err := bc.hc.SetCurrentHeader(currentHeader); err != nil {
 		return errors.Wrap(err, "headerChain SetCurrentHeader")
 	}
@@ -214,6 +215,65 @@ func (bc *BlockChain) loadLastState() error {
 		Msg("Loaded most recent local fast block")
 
 	return nil
+}
+
+// SetHead rewinds the local chain to a new head. In the case of headers, everything
+// above the new head will be deleted and the new one set. In the case of blocks
+// though, the head may be further rewound if block bodies are missing (non-archive
+// nodes after a fast sync).
+func (bc *BlockChain) SetHead(head uint64) error {
+	utils.Logger().Warn().Uint64("target", head).Msg("Rewinding blockchain")
+
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	// Rewind the header chain, deleting all block bodies until then
+	delFn := func(db rawdb.DatabaseDeleter, hash common.Hash, num uint64) error {
+		return rawdb.DeleteBody(db, hash, num)
+	}
+	if err := bc.hc.SetHead(head, delFn); err != nil {
+		return errors.Wrap(err, "headerChain SetHeader")
+	}
+	currentHeader := bc.hc.CurrentHeader()
+
+	// Clear out any stale content from the caches
+	bc.bodyCache.Purge()
+	bc.bodyRLPCache.Purge()
+	bc.blockCache.Purge()
+	bc.futureBlocks.Purge()
+
+	// Rewind the block chain, ensuring we don't end up with a stateless head block
+	if currentBlock := bc.CurrentBlock(); currentBlock != nil && currentHeader.Number().Uint64() < currentBlock.NumberU64() {
+		bc.currentBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number().Uint64()))
+	}
+	if currentBlock := bc.CurrentBlock(); currentBlock != nil {
+		if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
+			// Rewound state missing, rolled back to before pivot, reset to genesis
+			bc.currentBlock.Store(bc.genesisBlock)
+		}
+	}
+	// Rewind the fast block in a simpleton way to the target head
+	if currentFastBlock := bc.CurrentFastBlock(); currentFastBlock != nil && currentHeader.Number().Uint64() < currentFastBlock.NumberU64() {
+		bc.currentFastBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number().Uint64()))
+	}
+	// If either blocks reached nil, reset to the genesis state
+	if currentBlock := bc.CurrentBlock(); currentBlock == nil {
+		bc.currentBlock.Store(bc.genesisBlock)
+	}
+	if currentFastBlock := bc.CurrentFastBlock(); currentFastBlock == nil {
+		bc.currentFastBlock.Store(bc.genesisBlock)
+	}
+	currentBlock := bc.CurrentBlock()
+	currentFastBlock := bc.CurrentFastBlock()
+
+	if err := rawdb.WriteHeadBlockHash(bc.db, currentBlock.Hash()); err != nil {
+		return err
+	}
+	if err := rawdb.WriteHeadFastBlockHash(bc.db, currentFastBlock.Hash()); err != nil {
+		return err
+	}
+
+	return bc.loadLastState()
 }
 
 // ShardID returns the shard Id of the blockchain.
@@ -268,11 +328,158 @@ func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) error {
 	return nil
 }
 
+// repair tries to repair the current blockchain by rolling back the current block
+// until one with associated state is found. This is needed to fix incomplete db
+// writes caused either by crashes/power outages, or simply non-committed tries.
+//
+// This method only rolls back the current block. The current header and current
+// fast block are left intact.
+func (bc *BlockChain) repair(head **types.Block) error {
+	valsToRemove := map[common.Address]struct{}{}
+	for {
+		// Abort if we've rewound to a head block that does have associated state
+		if _, err := state.New((*head).Root(), bc.stateCache); err == nil {
+			utils.Logger().Info().
+				Str("number", (*head).Number().String()).
+				Str("hash", (*head).Hash().Hex()).
+				Msg("Rewound blockchain to past state")
+			return bc.removeInValidatorList(valsToRemove)
+		}
+		// Repair last commit sigs
+		lastSig := (*head).Header().LastCommitSignature()
+		sigAndBitMap := append(lastSig[:], (*head).Header().LastCommitBitmap()...)
+		bc.WriteCommitSig((*head).NumberU64()-1, sigAndBitMap)
+
+		// Otherwise rewind one block and recheck state availability there
+		for _, stkTxn := range (*head).StakingTransactions() {
+			if stkTxn.StakingType() == staking.DirectiveCreateValidator {
+				if addr, err := stkTxn.SenderAddress(); err == nil {
+					valsToRemove[addr] = struct{}{}
+				} else {
+					return err
+				}
+			}
+		}
+		block := bc.GetBlock((*head).ParentHash(), (*head).NumberU64()-1)
+		if block == nil {
+			return fmt.Errorf("missing block %d [%x]", (*head).NumberU64()-1, (*head).ParentHash())
+		}
+		*head = block
+	}
+}
+
+// writeHeadBlock writes a new head block
+func (bc *BlockChain) writeHeadBlock(block *types.Block) error {
+	// If the block is on a side chain or an unknown one, force other heads onto it too
+	updateHeads := rawdb.ReadCanonicalHash(bc.db, block.NumberU64()) != block.Hash()
+
+	// Add the block to the canonical chain number scheme and mark as the head
+	batch := bc.ChainDb().NewBatch()
+	if err := rawdb.WriteCanonicalHash(batch, block.Hash(), block.NumberU64()); err != nil {
+		return err
+	}
+	if err := rawdb.WriteHeadBlockHash(batch, block.Hash()); err != nil {
+		return err
+	}
+	if err := batch.Write(); err != nil {
+		return err
+	}
+
+	bc.currentBlock.Store(block)
+
+	// If the block is better than our head or is on a different chain, force update heads
+	if updateHeads {
+		if err := bc.hc.SetCurrentHeader(block.Header()); err != nil {
+			return errors.Wrap(err, "HeaderChain SetCurrentHeader")
+		}
+		if err := rawdb.WriteHeadFastBlockHash(bc.db, block.Hash()); err != nil {
+			return err
+		}
+
+		bc.currentFastBlock.Store(block)
+	}
+	return nil
+}
+
+// insert injects a new head block into the current block chain. This method
+// assumes that the block is indeed a true head. It will also reset the head
+// header and the head fast sync block to this very same block if they are older
+// or if they are on a different side chain.
+//
+// Note, this function assumes that the `mu` mutex is held!
+func (bc *BlockChain) insert(block *types.Block) error {
+	return bc.writeHeadBlock(block)
+}
+
+// Genesis retrieves the chain's genesis block.
+func (bc *BlockChain) Genesis() *types.Block {
+	return bc.genesisBlock
+}
+
+// GetBody retrieves a block body (transactions and uncles) from the database by
+// hash, caching it if found.
+func (bc *BlockChain) GetBody(hash common.Hash) *types.Body {
+	// Short circuit if the body's already in the cache, retrieve otherwise
+	if cached, ok := bc.bodyCache.Get(hash); ok {
+		body := cached.(*types.Body)
+		return body
+	}
+	number := bc.hc.GetBlockNumber(hash)
+	if number == nil {
+		return nil
+	}
+	body := rawdb.ReadBody(bc.db, hash, *number)
+	if body == nil {
+		return nil
+	}
+	// Cache the found body for next time and return
+	bc.bodyCache.Add(hash, body)
+	return body
+}
+
+// GetBodyRLP retrieves a block body in RLP encoding from the database by hash,
+// caching it if found.
+func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
+	// Short circuit if the body's already in the cache, retrieve otherwise
+	if cached, ok := bc.bodyRLPCache.Get(hash); ok {
+		return cached.(rlp.RawValue)
+	}
+	number := bc.hc.GetBlockNumber(hash)
+	if number == nil {
+		return nil
+	}
+	body := rawdb.ReadBodyRLP(bc.db, hash, *number)
+	if len(body) == 0 {
+		return nil
+	}
+	// Cache the found body for next time and return
+	bc.bodyRLPCache.Add(hash, body)
+	return body
+}
+
+// HasBlock checks if a block is fully present in the database or not.
+func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
+	if bc.blockCache.Contains(hash) {
+		return true
+	}
+	return rawdb.HasBody(bc.db, hash, number)
+}
 
 // HasState checks if state trie is fully present in the database or not.
 func (bc *BlockChain) HasState(hash common.Hash) bool {
 	_, err := bc.stateCache.OpenTrie(hash)
 	return err == nil
+}
+
+// HasBlockAndState checks if a block and associated state trie is fully present
+// in the database or not, caching it if present.
+func (bc *BlockChain) HasBlockAndState(hash common.Hash, number uint64) bool {
+	// Check first that the block itself is known
+	block := bc.GetBlock(hash, number)
+	if block == nil {
+		return false
+	}
+	return bc.HasState(block.Root())
 }
 
 // GetBlock retrieves a block from the database by hash and number,
@@ -903,6 +1110,9 @@ func (bc *BlockChain) Validator() Validator {
 	defer bc.procmu.RUnlock()
 	return bc.validator
 }
+
+// ChainDb returns the database
+func (bc *BlockChain) ChainDb() ethdb.Database { return bc.db }
 
 // WriteStatus status of write
 type WriteStatus byte

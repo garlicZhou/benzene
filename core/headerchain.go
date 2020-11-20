@@ -155,3 +155,72 @@ func (hc *HeaderChain) SetCurrentHeader(head *types.Header) error {
 	hc.currentHeaderHash = head.Hash()
 	return nil
 }
+
+// DeleteCallback is a callback function that is called by SetHead before
+// each header is deleted.
+type DeleteCallback func(rawdb.DatabaseDeleter, common.Hash, uint64) error
+
+// SetHead rewinds the local chain to a new head. Everything above the new head
+// will be deleted and the new one set.
+func (hc *HeaderChain) SetHead(head uint64, delFn DeleteCallback) error {
+	height := uint64(0)
+
+	if hdr := hc.CurrentHeader(); hdr != nil {
+		height = hdr.Number().Uint64()
+	}
+	batch := hc.chainDb.NewBatch()
+	for hdr := hc.CurrentHeader(); hdr != nil && hdr.Number().Uint64() > head; hdr = hc.CurrentHeader() {
+		hash := hdr.Hash()
+		num := hdr.Number().Uint64()
+		if delFn != nil {
+			if err := delFn(batch, hash, num); err != nil {
+				return err
+			}
+		}
+		if err := rawdb.DeleteHeader(batch, hash, num); err != nil {
+			return err
+		}
+		hc.currentHeader.Store(hc.GetHeader(hdr.ParentHash(), hdr.Number().Uint64()-1))
+	}
+	// Roll back the canonical chain numbering
+	for i := height; i > head; i-- {
+		if err := rawdb.DeleteCanonicalHash(batch, i); err != nil {
+			return err
+		}
+	}
+	if err := rawdb.WriteHeadHeaderHash(batch, hc.currentHeaderHash); err != nil {
+		return err
+	}
+
+	if err := batch.Write(); err != nil {
+		return err
+	}
+
+	// Clear out any stale content from the caches
+	hc.headerCache.Purge()
+	hc.numberCache.Purge()
+
+	if hc.CurrentHeader() == nil {
+		hc.currentHeader.Store(hc.genesisHeader)
+	}
+	hc.currentHeaderHash = hc.CurrentHeader().Hash()
+
+	return nil
+}
+
+// SetGenesis sets a new genesis block header for the chain
+func (hc *HeaderChain) SetGenesis(head *types.Header) {
+	hc.genesisHeader = head
+}
+
+// Config retrieves the header chain's chain configuration.
+func (hc *HeaderChain) Config() *params.ChainConfig { return hc.config }
+
+// Engine retrieves the header chain's consensus engine.
+func (hc *HeaderChain) Engine() consensus_engine.Engine { return hc.engine }
+
+// GetBlock implements consensus.ChainReader, and returns nil for every input as
+// a header chain does not have blocks available for retrieval.
+func (hc *HeaderChain) GetBlock(hash common.Hash, number uint64) *types.Block {
+	return nil
+}
