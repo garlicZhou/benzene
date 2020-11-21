@@ -8,6 +8,7 @@ import (
 	"benzene/params"
 	"benzene/utils"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"os"
@@ -31,6 +32,8 @@ import (
 )
 
 var (
+	// blockInsertTimer
+	blockInsertTimer = metrics.NewRegisteredTimer("chain/inserts", nil)
 	// ErrNoGenesis is the error when there is no genesis.
 	ErrNoGenesis = errors.New("Genesis not found in chain")
 )
@@ -67,8 +70,9 @@ type BlockChain struct {
 	scope         event.SubscriptionScope
 	genesisBlock  *types.Block
 
-	mu      sync.RWMutex // global mutex for locking chain operations
-	chainmu sync.RWMutex // blockchain insertion lock
+	mu                          sync.RWMutex // global mutex for locking chain operations
+	chainmu                     sync.RWMutex // blockchain insertion lock
+	procmu                      sync.RWMutex // block processor lock
 
 	currentBlock     atomic.Value // Current head of the block chain
 	currentFastBlock atomic.Value // Current head of the fast-sync chain (may be above the block chain!)
@@ -87,6 +91,7 @@ type BlockChain struct {
 	wg            sync.WaitGroup // chain processing wait group for shutting down
 
 	engine    consensus_engine.Engine
+	processor  Processor  // Block transaction processor interface
 	validator Validator // Block and state validator interface
 	maxGarbCollectedBlkNum int64
 
@@ -160,24 +165,24 @@ func (bc *BlockChain) loadLastState() error {
 		utils.Logger().Warn().Str("hash", head.Hex()).Msg("Head block missing, resetting chain")
 		return bc.Reset()
 	}
+	// TODO: Figure out why (hongzicong)
 	// Make sure the state associated with the block is available
-	if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
-		// Dangling block without a state associated, init from scratch
-		utils.Logger().Warn().
-			Str("number", currentBlock.Number().String()).
-			Str("hash", currentBlock.Hash().Hex()).
-			Msg("Head state missing, repairing chain")
-		if err := bc.repair(&currentBlock); err != nil {
-			return err
-		}
-	}
+	//if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
+	//	// Dangling block without a state associated, init from scratch
+	//	utils.Logger().Warn().
+	//		Str("number", currentBlock.Number().String()).
+	//		Str("hash", currentBlock.Hash().Hex()).
+	//		Msg("Head state missing, repairing chain")
+	//	if err := bc.repair(&currentBlock); err != nil {
+	//		return err
+	//	}
+	//}
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
 
-	// TODO: Figure out why
-	// We don't need the following as we want the current header and block to be consistent
 	// Restore the last known head header
 	currentHeader := currentBlock.Header()
+	// TODO: Figure out why dont need (hongzicong)
 	//if head := rawdb.ReadHeadHeaderHash(bc.db); head != (common.Hash{}) {
 	//	if header := bc.GetHeaderByHash(head); header != nil {
 	//		currentHeader = header
@@ -294,6 +299,44 @@ func (bc *BlockChain) CurrentFastBlock() *types.Block {
 	return bc.currentFastBlock.Load().(*types.Block)
 }
 
+// SetProcessor sets the processor required for making state modifications.
+func (bc *BlockChain) SetProcessor(processor Processor) {
+	bc.procmu.Lock()
+	defer bc.procmu.Unlock()
+	bc.processor = processor
+}
+
+// SetValidator sets the validator which is used to validate incoming blocks.
+func (bc *BlockChain) SetValidator(validator Validator) {
+	bc.procmu.Lock()
+	defer bc.procmu.Unlock()
+	bc.validator = validator
+}
+
+// Validator returns the current validator.
+func (bc *BlockChain) Validator() Validator {
+	bc.procmu.RLock()
+	defer bc.procmu.RUnlock()
+	return bc.validator
+}
+
+// Processor returns the current processor.
+func (bc *BlockChain) Processor() Processor {
+	bc.procmu.RLock()
+	defer bc.procmu.RUnlock()
+	return bc.processor
+}
+
+// State returns a new mutable state based on the current HEAD block.
+func (bc *BlockChain) State() (*state.DB, error) {
+	return bc.StateAt(bc.CurrentBlock().Root())
+}
+
+// StateAt returns a new mutable state based on a particular point in time.
+func (bc *BlockChain) StateAt(root common.Hash) (*state.DB, error) {
+	return state.New(root, bc.stateCache)
+}
+
 // Reset purges the entire blockchain, restoring it to its genesis state.
 func (bc *BlockChain) Reset() error {
 	return bc.ResetWithGenesisBlock(bc.genesisBlock)
@@ -326,46 +369,6 @@ func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) error {
 	bc.currentFastBlock.Store(bc.genesisBlock)
 
 	return nil
-}
-
-// repair tries to repair the current blockchain by rolling back the current block
-// until one with associated state is found. This is needed to fix incomplete db
-// writes caused either by crashes/power outages, or simply non-committed tries.
-//
-// This method only rolls back the current block. The current header and current
-// fast block are left intact.
-func (bc *BlockChain) repair(head **types.Block) error {
-	valsToRemove := map[common.Address]struct{}{}
-	for {
-		// Abort if we've rewound to a head block that does have associated state
-		if _, err := state.New((*head).Root(), bc.stateCache); err == nil {
-			utils.Logger().Info().
-				Str("number", (*head).Number().String()).
-				Str("hash", (*head).Hash().Hex()).
-				Msg("Rewound blockchain to past state")
-			return bc.removeInValidatorList(valsToRemove)
-		}
-		// Repair last commit sigs
-		lastSig := (*head).Header().LastCommitSignature()
-		sigAndBitMap := append(lastSig[:], (*head).Header().LastCommitBitmap()...)
-		bc.WriteCommitSig((*head).NumberU64()-1, sigAndBitMap)
-
-		// Otherwise rewind one block and recheck state availability there
-		for _, stkTxn := range (*head).StakingTransactions() {
-			if stkTxn.StakingType() == staking.DirectiveCreateValidator {
-				if addr, err := stkTxn.SenderAddress(); err == nil {
-					valsToRemove[addr] = struct{}{}
-				} else {
-					return err
-				}
-			}
-		}
-		block := bc.GetBlock((*head).ParentHash(), (*head).NumberU64()-1)
-		if block == nil {
-			return fmt.Errorf("missing block %d [%x]", (*head).NumberU64()-1, (*head).ParentHash())
-		}
-		*head = block
-	}
 }
 
 // writeHeadBlock writes a new head block
@@ -624,7 +627,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 	}
 
 	// Commit state object changes to in-memory trie
-	root, err := state.Commit(bc.chainConfig.IsS3(block.Epoch()))
+	root, err := state.Commit()
 	if err != nil {
 		return NonStatTy, err
 	}
@@ -696,25 +699,8 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 		return NonStatTy, err
 	}
 
-	// Write offchain data
-	if status, err := bc.CommitOffChainData(
-		batch, block, receipts,
-		cxReceipts, paid, state,
-	); err != nil {
-		return status, err
-	}
-
 	// Write the positional metadata for transaction/receipt lookups and preimages
 	if err := rawdb.WriteBlockTxLookUpEntries(batch, block); err != nil {
-		return NonStatTy, err
-	}
-	if err := rawdb.WriteBlockStxLookUpEntries(batch, block); err != nil {
-		return NonStatTy, err
-	}
-	if err := rawdb.WriteCxLookupEntries(batch, block); err != nil {
-		return NonStatTy, err
-	}
-	if err := rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages()); err != nil {
 		return NonStatTy, err
 	}
 
@@ -909,26 +895,26 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, 
 		}
 
 		// Process block using the parent state as reference point.
-		receipts, cxReceipts, logs, usedGas, payout, err := bc.processor.Process(
-			block, state, bc.vmConfig,
+		logs, err := bc.processor.Process(
+			block, state,
 		)
 		if err != nil {
-			bc.reportBlock(block, receipts, err)
+			bc.reportBlock(block, err)
 			return i, events, coalescedLogs, err
 		}
 
 		// Validate the state using the default validator
 		if err := bc.Validator().ValidateState(
-			block, state, receipts, cxReceipts, usedGas,
+			block, state,
 		); err != nil {
-			bc.reportBlock(block, receipts, err)
+			bc.reportBlock(block, err)
 			return i, events, coalescedLogs, err
 		}
 		proctime := time.Since(bstart)
 
 		// Write the block to the chain and get the status.
 		status, err := bc.WriteBlockWithState(
-			block, receipts, cxReceipts, payout, state,
+			block, state,
 		)
 		if err != nil {
 			return i, events, coalescedLogs, err
@@ -953,7 +939,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, 
 		}
 
 		stats.processed++
-		stats.usedGas += usedGas
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
 	}
@@ -1045,24 +1030,19 @@ func (bc *BlockChain) addBadBlock(block *types.Block, reason error) {
 // reportBlock logs a bad block error.
 func (bc *BlockChain) reportBlock(block *types.Block, err error) {
 	bc.addBadBlock(block, err)
-	var receiptString string
-	for _, receipt := range receipts {
-		receiptString += fmt.Sprintf("\t%v\n", receipt)
-	}
+
 	utils.Logger().Error().Msgf(`
 ########## BAD BLOCK #########
 Chain config: %v
 Number: %v
 NumTxn: %v
 Hash: 0x%x
-%v
 Error: %v
 ##############################
 `, bc.chainConfig,
 		block.Number(),
 		len(block.Transactions()),
 		block.Hash(),
-		receiptString,
 		err,
 	)
 }
@@ -1096,20 +1076,6 @@ func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
 
 // Engine retrieves the blockchain's consensus engine.
 func (bc *BlockChain) Engine() consensus_engine.Engine { return bc.engine }
-
-// SetValidator sets the validator which is used to validate incoming blocks.
-func (bc *BlockChain) SetValidator(validator Validator) {
-	bc.procmu.Lock()
-	defer bc.procmu.Unlock()
-	bc.validator = validator
-}
-
-// Validator returns the current validator.
-func (bc *BlockChain) Validator() Validator {
-	bc.procmu.RLock()
-	defer bc.procmu.RUnlock()
-	return bc.validator
-}
 
 // ChainDb returns the database
 func (bc *BlockChain) ChainDb() ethdb.Database { return bc.db }

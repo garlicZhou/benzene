@@ -17,6 +17,12 @@
 // Package state provides a caching layer atop the Ethereum state trie.
 package state
 
+import (
+	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+)
+
 // DB within the ethereum protocol are used to store anything
 // within the merkle trie. StateDBs take care of caching and storing
 // nested states. It's the general query interface to retrieve:
@@ -25,4 +31,48 @@ package state
 type DB struct {
 	db   Database
 	trie Trie
+
+	// DB error.
+	// State objects are used by the consensus core and VM which are
+	// unable to deal with database-level errors. Any error that occurs
+	// during a database read is memoized here and will eventually be returned
+	// by DB.Commit.
+	dbErr error
+}
+
+// New creates a new state from a given trie.
+func New(root common.Hash, db Database) (*DB, error) {
+	tr, err := db.OpenTrie(root)
+	if err != nil {
+		return nil, err
+	}
+	return &DB{
+		db:                  db,
+		trie:                tr,
+	}, nil
+}
+
+// setError remembers the first non-nil error it is called with.
+func (db *DB) setError(err error) {
+	if db.dbErr == nil {
+		db.dbErr = err
+	}
+}
+
+func (db *DB) Error() error {
+	return db.dbErr
+}
+
+// Commit writes the state to the underlying in-memory trie database.
+func (db *DB) Commit() (root common.Hash, err error) {
+	if db.dbErr != nil {
+		return common.Hash{}, fmt.Errorf("commit aborted due to earlier error: %v", db.dbErr)
+	}
+	return db.trie.Commit(func(path []byte, leaf []byte, parent common.Hash) error {
+		var account Account
+		if err := rlp.DecodeBytes(leaf, &account); err != nil {
+			return nil
+		}
+		return nil
+	})
 }

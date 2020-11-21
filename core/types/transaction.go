@@ -1,7 +1,9 @@
 package types
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -9,10 +11,14 @@ import (
 // Transaction struct.
 type Transaction struct {
 	data txdata
+	// caches
+	hash atomic.Value
+	size atomic.Value
+	from atomic.Value
 }
 
 type txdata struct {
-	Nonce uint64
+	AccountNonce uint64          `json:"nonce"      gencodec:"required"`
 
 	Sender    [20]byte
 	Recipient [20]byte
@@ -33,11 +39,14 @@ type txdata struct {
 	// 在数据存储中，go的签名与python的签名有不同之处：
 	// go的签名需要存R和S
 	// python的签名已经将R和S整合到了一起
+
+	// This is only used when marshaling to JSON.
+	Hash *common.Hash `json:"hash" rlp:"-"`
 }
 
 // Nonce returns account nonce from Transaction.
 func (tx *Transaction) Nonce() uint64 {
-	return tx.data.Nonce
+	return tx.data.AccountNonce
 }
 
 // Sender returns the sender address of the transaction.
@@ -50,6 +59,18 @@ func (tx *Transaction) Sender() [20]byte {
 func (tx *Transaction) Recipient() [20]byte {
 	to := tx.data.Recipient
 	return to
+}
+
+
+// Hash hashes the RLP encoding of tx.
+// It uniquely identifies the transaction.
+func (tx *Transaction) Hash() common.Hash {
+	if hash := tx.hash.Load(); hash != nil {
+		return hash.(common.Hash)
+	}
+	v := rlpHash(tx)
+	tx.hash.Store(v)
+	return v
 }
 
 // ShardID returns which shard id this transaction was signed for (if at all)

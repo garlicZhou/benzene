@@ -5,10 +5,7 @@ import (
 	"math/big"
 	"unsafe"
 
-	"golang.org/x/crypto/sha3"
-
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/rs/zerolog"
 )
 
@@ -42,12 +39,10 @@ func NewHeader(parentHash common.Hash, number, time *big.Int, shardID uint32, si
 	}}
 }
 
-// Hash returns the block hash of the header, which is simply the keccak256 hash of its RLP encoding.
-func (h *Header) Hash() (hash common.Hash) {
-	hw := sha3.NewLegacyKeccak256()
-	rlp.Encode(hw, h)
-	hw.Sum(hash[:0])
-	return hash
+// Hash returns the block hash of the header, which is simply the keccak256 hash of its
+// RLP encoding.
+func (h *Header) Hash() common.Hash {
+	return rlpHash(h)
 }
 
 // Size returns the approximate memory used by all internal contents.

@@ -17,9 +17,8 @@
 package core
 
 import (
+	"benzene/core/state"
 	"benzene/core/types"
-
-	"github.com/ethereum/go-ethereum/core/state"
 )
 
 // Validator is an interface which defines the standard for block validation. It
@@ -30,5 +29,24 @@ type Validator interface {
 	ValidateBody(block *types.Block) error
 
 	// ValidateState validates the given statedb
-	ValidateState(block *types.Block, state *state.StateDB) error
+	ValidateState(block *types.Block, state *state.DB) error
+
+	// ValidateHeader checks whether a header conforms to the consensus rules of a
+	// given engine. Verifying the seal may be done optionally here, or explicitly
+	// via the VerifySeal method.
+	ValidateHeader(block *types.Block, seal bool) error
+
+	// ValidateHeaders verifies a batch of blocks' headers concurrently. The method returns a quit channel
+	// to abort the operations and a results channel to retrieve the async verifications
+	ValidateHeaders(chain []*types.Block) (chan<- struct{}, <-chan error)
+}
+
+// Processor is an interface for processing blocks using a given initial state.
+//
+// Process takes the block to be processed and the statedb upon which the
+// initial state is based. It should return the receipts generated, amount
+// of gas used in the process and return an error if any of the internal rules
+// failed.
+type Processor interface {
+	Process(block *types.Block, statedb *state.DB) ([]*types.Log, error)
 }
