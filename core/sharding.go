@@ -2,10 +2,11 @@ package core
 
 import (
 	"benzene/consensus/engine"
+	"benzene/core/rawdb"
+	"benzene/params"
 	"benzene/utils"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/pkg/errors"
 	"sync"
@@ -90,7 +91,7 @@ func (sc *CollectionImpl) ShardChain(shardID uint32) (*BlockChain, error) {
 	}
 
 	bc, err := NewBlockChain(
-		db, cacheConfig, sc.chainConfig, sc.engine, vm.Config{}, nil,
+		db, cacheConfig, sc.chainConfig, sc.engine,
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create blockchain")

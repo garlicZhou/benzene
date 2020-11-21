@@ -39,9 +39,11 @@ var (
 )
 
 const (
+	bodyCacheLimit      = 256
 	blockCacheLimit     = 256
 	maxFutureBlocks     = 256
 	maxTimeFutureBlocks = 30
+	badBlockLimit       = 10
 	triesInMemory       = 128
 )
 
@@ -53,6 +55,20 @@ type CacheConfig struct {
 	TrieTimeLimit time.Duration // Time limit after which to flush the current in-memory trie to disk
 }
 
+// BlockChain represents the canonical chain given a database with a genesis
+// block. The Blockchain manages chain imports, reverts, chain reorganisations.
+//
+// Importing blocks in to the block chain happens according to the set of rules
+// defined by the two stage validator. Processing of blocks is done using the
+// Processor which processes the included transaction. The validation of the state
+// is done in the second part of the validator. Failing results in aborting of
+// the import.
+//
+// The BlockChain also helps in returning blocks from **any** chain included
+// in the database as well as blocks that represents the canonical chain. It's
+// important to note that GetBlock can return any block and does not need to be
+// included in the canonical one where as GetBlockByNumber always represents the
+// canonical chain.
 type BlockChain struct {
 	chainConfig *params.ChainConfig // Chain & network configuration
 	cacheConfig *CacheConfig        // Cache configuration for pruning
@@ -70,9 +86,9 @@ type BlockChain struct {
 	scope         event.SubscriptionScope
 	genesisBlock  *types.Block
 
-	mu                          sync.RWMutex // global mutex for locking chain operations
-	chainmu                     sync.RWMutex // blockchain insertion lock
-	procmu                      sync.RWMutex // block processor lock
+	mu      sync.RWMutex // global mutex for locking chain operations
+	chainmu sync.RWMutex // blockchain insertion lock
+	procmu  sync.RWMutex // block processor lock
 
 	currentBlock     atomic.Value // Current head of the block chain
 	currentFastBlock atomic.Value // Current head of the fast-sync chain (may be above the block chain!)
@@ -83,19 +99,19 @@ type BlockChain struct {
 	blockCache   *lru.Cache     // Cache for the most recent entire blocks
 	futureBlocks *lru.Cache     // future blocks are blocks added for later processing
 
-	quit    chan struct{} // blockchain quit channel
-	running int32         // running must be called atomically
+	quit    chan struct{}  // blockchain quit channel
+	wg      sync.WaitGroup // chain processing wait group for shutting down
+	running int32          // 0 if chain is running, 1 when stopped
 
 	// procInterrupt must be atomically called
-	procInterrupt int32          // interrupt signaler for block processing
-	wg            sync.WaitGroup // chain processing wait group for shutting down
+	procInterrupt int32 // interrupt signaler for block processing
 
-	engine    consensus_engine.Engine
-	processor  Processor  // Block transaction processor interface
-	validator Validator // Block and state validator interface
+	engine                 consensus_engine.Engine
+	processor              Processor // Block transaction processor interface
+	validator              Validator // Block and state validator interface
 	maxGarbCollectedBlkNum int64
 
-	badBlocks          *lru.Cache                     // Bad block cache
+	badBlocks *lru.Cache // Bad block cache
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -110,19 +126,29 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		}
 	}
 
+	bodyCache, _ := lru.New(bodyCacheLimit)
+	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
 	futureBlocks, _ := lru.New(maxFutureBlocks)
+	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:  chainConfig,
-		cacheConfig:  cacheConfig,
-		db:           db,
-		triegc:       prque.New(nil),
-		blockCache:   blockCache,
-		futureBlocks: futureBlocks,
-		quit:         make(chan struct{}),
-		engine:       engine,
+		chainConfig:            chainConfig,
+		cacheConfig:            cacheConfig,
+		db:                     db,
+		triegc:                 prque.New(nil),
+		stateCache:             state.NewDatabase(db),
+		quit:                   make(chan struct{}),
+		bodyCache:              bodyCache,
+		bodyRLPCache:           bodyRLPCache,
+		blockCache:             blockCache,
+		futureBlocks:           futureBlocks,
+		engine:                 engine,
+		badBlocks:              badBlocks,
+		maxGarbCollectedBlkNum: -1,
 	}
+	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
+	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
 
 	var err error
 	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.getProcInterrupt)
@@ -142,6 +168,35 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// Take ownership of this particular state
 	go bc.update()
 	return bc, nil
+}
+
+
+// ValidateNewBlock validates new block.
+func (bc *BlockChain) ValidateNewBlock(block *types.Block) error {
+	state, err := state.New(bc.CurrentBlock().Root(), bc.stateCache)
+
+	if err != nil {
+		return err
+	}
+
+	// NOTE Order of mutating state here matters.
+	// Process block using the parent state as reference point.
+	_, err = bc.processor.Process(
+		block, state,
+	)
+	if err != nil {
+		bc.reportBlock(block, err)
+		return err
+	}
+
+	// Verify all the hash roots (state, txns, receipts, cross-shard)
+	if err := bc.Validator().ValidateState(
+		block, state,
+	); err != nil {
+		bc.reportBlock(block, err)
+		return err
+	}
+	return nil
 }
 
 func (bc *BlockChain) getProcInterrupt() bool {
@@ -653,7 +708,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 				nodes, imgs = triedb.Size()
 				limit       = common.StorageSize(bc.cacheConfig.TrieNodeLimit) * 1024 * 1024
 			)
-			if nodes > limit || imgs > 4 * 1024 * 1024 {
+			if nodes > limit || imgs > 4*1024*1024 {
 				triedb.Cap(limit - ethdb.IdealBatchSize)
 			}
 			// Find the next state trie we need to commit
@@ -665,7 +720,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 				if bc.gcproc > bc.cacheConfig.TrieTimeLimit {
 					// If we're exceeding limits but haven't reached a large enough memory gap,
 					// warn the user that the system is becoming unstable.
-					if chosen < lastWrite + triesInMemory && bc.gcproc >= 2 * bc.cacheConfig.TrieTimeLimit {
+					if chosen < lastWrite+triesInMemory && bc.gcproc >= 2*bc.cacheConfig.TrieTimeLimit {
 						utils.Logger().Info().
 							Dur("time", bc.gcproc).
 							Dur("allowance", bc.cacheConfig.TrieTimeLimit).
