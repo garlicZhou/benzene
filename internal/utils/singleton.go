@@ -1,4 +1,4 @@
-// TODO Rewrite into all zerolog or all go-ethereum/log
+// TODO Rewrite into all zerolog or all go-ethereum/log (hongzicong)
 /* This module keeps all struct used as singleton */
 
 package utils

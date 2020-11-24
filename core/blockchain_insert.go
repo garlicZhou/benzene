@@ -18,7 +18,7 @@ package core
 
 import (
 	"benzene/core/types"
-	"benzene/utils"
+	"benzene/internal/utils"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"

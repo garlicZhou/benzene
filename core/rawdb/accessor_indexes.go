@@ -2,7 +2,7 @@ package rawdb
 
 import (
 	"benzene/core/types"
-	"benzene/utils"
+	"benzene/internal/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 )

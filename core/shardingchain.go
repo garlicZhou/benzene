@@ -1,10 +1,10 @@
 package core
 
 import (
-	"benzene/consensus/engine"
+	consensus_engine "benzene/consensus/engine"
 	"benzene/core/rawdb"
+	"benzene/internal/utils"
 	"benzene/params"
-	"benzene/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -30,7 +30,7 @@ type Collection interface {
 type CollectionImpl struct {
 	dbFactory    DBFactory
 	dbInit       DBInitializer
-	engine       engine.Engine
+	engine       consensus_engine.Engine
 	mtx          sync.Mutex
 	pool         map[uint32]*BlockChain
 	disableCache bool
@@ -44,7 +44,7 @@ type CollectionImpl struct {
 // dbInit is the shard chain initializer to use when the database returned by
 // the factory is brand new (empty).
 func NewCollection(
-	dbFactory DBFactory, dbInit DBInitializer, engine engine.Engine,
+	dbFactory DBFactory, dbInit DBInitializer, engine consensus_engine.Engine,
 	chainConfig *params.ChainConfig,
 ) *CollectionImpl {
 	return &CollectionImpl{

@@ -1,0 +1,2 @@
+{"level":"info","keyfile":"./.bznkey","caller":"C:/Users/cszhong/Desktop/benzene/internal/utils/utils.go:124","time":"2020-11-24T12:11:06.8489935+08:00","message":"No private key can be loaded from file"}
+{"level":"info","caller":"C:/Users/cszhong/Desktop/benzene/internal/utils/utils.go:125","time":"2020-11-24T12:11:06.8539903+08:00","message":"Using random private key"}

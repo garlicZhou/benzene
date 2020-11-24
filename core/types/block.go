@@ -17,7 +17,7 @@
 package types
 
 import (
-	"benzene/utils"
+	"benzene/internal/utils"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
