@@ -77,6 +77,7 @@ func (sc *CollectionImpl) ShardChain(shardID uint32) (*BlockChain, error) {
 		db = nil
 		return nil, errors.Wrap(err, "cannot open chain database")
 	}
+	// Initialize a new blockchain database if there does not exist database
 	if rawdb.ReadCanonicalHash(db, 0) == (common.Hash{}) {
 		utils.Logger().Info().
 			Uint32("shardID", shardID).

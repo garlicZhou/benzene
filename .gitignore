@@ -11,6 +11,12 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# IdeaIDE
+.idea
+
+# VS Code
+.vscode
+
 # go mod summary file
 go.sum
 

@@ -1,14 +1,46 @@
 package state
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
+	"time"
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
+
+// Code ...
+type Code []byte
+
+func (c Code) String() string {
+	return string(c) //strings.Join(Disassemble(c), " ")
+}
+
+// Storage ...
+type Storage map[common.Hash]common.Hash
+
+func (s Storage) String() (str string) {
+	for key, value := range s {
+		str += fmt.Sprintf("%X : %X\n", key, value)
+	}
+
+	return
+}
+
+// Copy ...
+func (s Storage) Copy() Storage {
+	cpy := make(Storage)
+	for key, value := range s {
+		cpy[key] = value
+	}
+
+	return cpy
+}
 
 // Object represents an Ethereum account which is being modified.
 //
@@ -28,11 +60,27 @@ type Object struct {
 	// during a database read is memoized here and will eventually be returned
 	// by StateDB.Commit.
 	dbErr error
+
+	// Write caches.
+	trie Trie // storage trie, which becomes non-nil on first access
+	code Code // contract bytecode, which gets set when code is loaded
+
+	originStorage  Storage // Storage cache of original entries to dedup rewrites, reset for every transaction
+	pendingStorage Storage // Storage entries that need to be flushed to disk, at the end of an entire block
+	dirtyStorage   Storage // Storage entries that have been modified in the current transaction execution
+	fakeStorage    Storage // Fake storage which constructed by caller for debugging purpose.
+
+	// Cache flags.
+	// When an object is marked suicided it will be delete from the trie
+	// during the "update" phase of the state transition.
+	dirtyCode bool // true if the code was updated
+	suicided  bool
+	deleted   bool
 }
 
 // empty returns whether the account is considered empty.
 func (s *Object) empty() bool {
-	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0
+	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
 // Account is the Ethereum consensus representation of accounts.
@@ -40,6 +88,8 @@ func (s *Object) empty() bool {
 type Account struct {
 	Nonce    uint64
 	Balance  *big.Int
+	Root     common.Hash // merkle root of the storage trie
+	CodeHash []byte
 }
 
 // newObject creates a state object.
@@ -52,6 +102,9 @@ func newObject(db *DB, address common.Address, data Account) *Object {
 		address:        address,
 		addrHash:       crypto.Keccak256Hash(address[:]),
 		data:           data,
+		originStorage:  make(Storage),
+		pendingStorage: make(Storage),
+		dirtyStorage:   make(Storage),
 	}
 }
 
@@ -65,6 +118,49 @@ func (s *Object) setError(err error) {
 	if s.dbErr == nil {
 		s.dbErr = err
 	}
+}
+
+func (s *Object) getTrie(db Database) Trie {
+	if s.trie == nil {
+		var err error
+		s.trie, err = db.OpenStorageTrie(s.addrHash, s.data.Root)
+		if err != nil {
+			s.trie, _ = db.OpenStorageTrie(s.addrHash, common.Hash{})
+			s.setError(fmt.Errorf("can't create storage trie: %v", err))
+		}
+	}
+	return s.trie
+}
+
+// finalise moves all dirty storage slots into the pending area to be hashed or
+// committed later. It is invoked at the end of every transaction.
+func (s *Object) finalise() {
+
+}
+
+// updateTrie writes cached storage modifications into the object's storage trie.
+func (s *Object) updateTrie(db Database) Trie {
+	// Make sure all dirty slots are finalized into the pending storage area
+	s.finalise()
+
+	// Track the amount of time wasted on updating the storge trie
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.db.StorageUpdates += time.Since(start) }(time.Now())
+	}
+	// Insert all the pending updates into the trie
+	tr := s.getTrie(db)
+	return tr
+}
+
+// UpdateRoot sets the trie root to the current root hash of
+func (s *Object) updateRoot(db Database) {
+	s.updateTrie(db)
+
+	// Track the amount of time wasted on hashing the storge trie
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
+	}
+	s.data.Root = s.trie.Hash()
 }
 
 // AddBalance removes amount from c's balance.

@@ -259,9 +259,9 @@ func (bc *BlockChain) loadLastState() error {
 	currentFastBlock := bc.CurrentFastBlock()
 
 	utils.Logger().Info().
-		Str("number", currentHeader.Number().String()).
+		Str("number", currentHeader.Number.String()).
 		Str("hash", currentHeader.Hash().Hex()).
-		Str("age", common.PrettyAge(time.Unix(currentHeader.Time().Int64(), 0)).String()).
+		Str("age", common.PrettyAge(time.Unix(currentHeader.Time.Int64(), 0)).String()).
 		Msg("Loaded most recent local header")
 	utils.Logger().Info().
 		Str("number", currentBlock.Number().String()).
@@ -303,8 +303,8 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	bc.futureBlocks.Purge()
 
 	// Rewind the block chain, ensuring we don't end up with a stateless head block
-	if currentBlock := bc.CurrentBlock(); currentBlock != nil && currentHeader.Number().Uint64() < currentBlock.NumberU64() {
-		bc.currentBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number().Uint64()))
+	if currentBlock := bc.CurrentBlock(); currentBlock != nil && currentHeader.Number.Uint64() < currentBlock.NumberU64() {
+		bc.currentBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64()))
 	}
 	if currentBlock := bc.CurrentBlock(); currentBlock != nil {
 		if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
@@ -313,8 +313,8 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		}
 	}
 	// Rewind the fast block in a simpleton way to the target head
-	if currentFastBlock := bc.CurrentFastBlock(); currentFastBlock != nil && currentHeader.Number().Uint64() < currentFastBlock.NumberU64() {
-		bc.currentFastBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number().Uint64()))
+	if currentFastBlock := bc.CurrentFastBlock(); currentFastBlock != nil && currentHeader.Number.Uint64() < currentFastBlock.NumberU64() {
+		bc.currentFastBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64()))
 	}
 	// If either blocks reached nil, reset to the genesis state
 	if currentBlock := bc.CurrentBlock(); currentBlock == nil {
@@ -600,11 +600,11 @@ func (bc *BlockChain) Stop() {
 				recent := bc.GetHeaderByNumber(number - offset)
 				if recent != nil {
 					utils.Logger().Info().
-						Str("block", recent.Number().String()).
+						Str("block", recent.Number.String()).
 						Str("hash", recent.Hash().Hex()).
-						Str("root", recent.Root().Hex()).
+						Str("root", recent.Root.Hex()).
 						Msg("Writing cached state to disk")
-					if err := triedb.Commit(recent.Root(), true, nil); err != nil {
+					if err := triedb.Commit(recent.Root, true, nil); err != nil {
 						utils.Logger().Error().Err(err).Msg("Failed to commit recent state trie")
 					}
 				}
@@ -714,7 +714,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 			// Find the next state trie we need to commit
 			header := bc.GetHeaderByNumber(current - triesInMemory)
 			if header != nil {
-				chosen := header.Number().Uint64()
+				chosen := header.Number.Uint64()
 
 				// If we exceeded out time allowance, flush an entire trie to disk
 				if bc.gcproc > bc.cacheConfig.TrieTimeLimit {
@@ -728,7 +728,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, state *state.DB) (
 							Msg("State in memory for too long, committing")
 					}
 					// Flush an entire trie and restart the counters
-					triedb.Commit(header.Root(), true, nil)
+					triedb.Commit(header.Root, true, nil)
 					lastWrite = chosen
 					bc.gcproc = 0
 				}

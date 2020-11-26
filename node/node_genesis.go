@@ -4,9 +4,6 @@ import (
 	"benzene/core"
 	"benzene/internal/utils"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"math/big"
-
-	"github.com/pkg/errors"
 )
 
 // genesisInitializer is a shardchain.DBInitializer adapter.
@@ -16,34 +13,18 @@ type genesisInitializer struct {
 
 // InitChainDB sets up a new genesis block in the database for the given shard.
 func (gi *genesisInitializer) InitChainDB(db ethdb.Database, shardID uint32) error {
-	shardState, _ := committee.WithStakingEnabled.Compute(
-		big.NewInt(core.GenesisEpoch), nil,
-	)
-	if shardState == nil {
-		return errors.New("failed to create genesis shard state")
-	}
-	if shardID != shard.BeaconChainShardID {
-		// store only the local shard for shard chains
-		subComm, err := shardState.FindCommitteeByID(shardID)
-		if err != nil {
-			return errors.New("cannot find local shard in genesis")
-		}
-		shardState = &shard.State{nil, []shard.Committee{*subComm}}
-	}
-	gi.node.SetupGenesisBlock(db, shardID, shardState)
+	gi.node.SetupGenesisBlock(db, shardID)
 	return nil
 }
 
 // SetupGenesisBlock sets up a genesis blockchain.
-func (node *Node) SetupGenesisBlock(db ethdb.Database, shardID uint32, myShardState *shard.State) {
+func (node *Node) SetupGenesisBlock(db ethdb.Database, shardID uint32) {
 	utils.Logger().Info().Interface("shardID", shardID).Msg("setting up a brand new chain database")
 	if shardID == node.NodeConfig.ShardID {
 		node.isFirstTime = true
 	}
 
-	gspec := core.NewGenesisSpec(node.NodeConfig.GetNetworkType(), shardID)
-	gspec.ShardStateHash = myShardState.Hash()
-	gspec.ShardState = *myShardState.DeepCopy()
+	gspec := core.NewGenesisSpec(shardID)
 	// Store genesis block into db.
 	gspec.MustCommit(db)
 }

@@ -17,12 +17,10 @@
 package rawdb
 
 import (
-	"bytes"
-	"encoding/binary"
-
 	"benzene/core/types"
 	"benzene/internal/utils"
-
+	"bytes"
+	"encoding/binary"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -62,6 +60,15 @@ func ReadHeaderNumber(db DatabaseReader, hash common.Hash) *uint64 {
 	}
 	number := binary.BigEndian.Uint64(data)
 	return &number
+}
+
+// WriteHeaderNumber stores the hash->number mapping.
+func WriteHeaderNumber(db DatabaseWriter, hash common.Hash, number uint64) {
+	key := headerNumberKey(hash)
+	enc := encodeBlockNumber(number)
+	if err := db.Put(key, enc); err != nil {
+		utils.Logger().Error().Msg("Failed to store hash to number mapping")
+	}
 }
 
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
@@ -156,21 +163,18 @@ func WriteHeader(db DatabaseWriter, header *types.Header) error {
 	// Write the hash -> number mapping
 	var (
 		hash    = header.Hash()
-		number  = header.Number().Uint64()
-		encoded = encodeBlockNumber(number)
+		number  = header.Number.Uint64()
 	)
-	key := headerNumberKey(hash)
-	if err := db.Put(key, encoded); err != nil {
-		utils.Logger().Error().Msg("Failed to store hash to number mapping")
-		return err
-	}
+	// Write the hash -> number mapping
+	WriteHeaderNumber(db, hash, number)
+
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		utils.Logger().Error().Msg("Failed to RLP encode header")
 		return err
 	}
-	key = headerKey(number, hash)
+	key := headerKey(number, hash)
 	if err := db.Put(key, data); err != nil {
 		utils.Logger().Error().Msg("Failed to store header")
 		return err

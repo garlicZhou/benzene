@@ -19,7 +19,6 @@ import (
 
 const (
 	headerCacheLimit = 512
-	tdCacheLimit     = 1024
 	numberCacheLimit = 2048
 )
 
@@ -166,12 +165,12 @@ func (hc *HeaderChain) SetHead(head uint64, delFn DeleteCallback) error {
 	height := uint64(0)
 
 	if hdr := hc.CurrentHeader(); hdr != nil {
-		height = hdr.Number().Uint64()
+		height = hdr.Number.Uint64()
 	}
 	batch := hc.chainDb.NewBatch()
-	for hdr := hc.CurrentHeader(); hdr != nil && hdr.Number().Uint64() > head; hdr = hc.CurrentHeader() {
+	for hdr := hc.CurrentHeader(); hdr != nil && hdr.Number.Uint64() > head; hdr = hc.CurrentHeader() {
 		hash := hdr.Hash()
-		num := hdr.Number().Uint64()
+		num := hdr.Number.Uint64()
 		if delFn != nil {
 			if err := delFn(batch, hash, num); err != nil {
 				return err
@@ -180,7 +179,7 @@ func (hc *HeaderChain) SetHead(head uint64, delFn DeleteCallback) error {
 		if err := rawdb.DeleteHeader(batch, hash, num); err != nil {
 			return err
 		}
-		hc.currentHeader.Store(hc.GetHeader(hdr.ParentHash(), hdr.Number().Uint64()-1))
+		hc.currentHeader.Store(hc.GetHeader(hdr.ParentHash, hdr.Number.Uint64()-1))
 	}
 	// Roll back the canonical chain numbering
 	for i := height; i > head; i-- {

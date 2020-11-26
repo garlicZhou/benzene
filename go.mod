@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/ethereum/go-ethereum v1.9.24
+	github.com/fjl/gencodec v0.0.0-20191126094850-e283372f291f // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/libp2p/go-libp2p v0.12.0
 	github.com/libp2p/go-libp2p-core v0.7.0

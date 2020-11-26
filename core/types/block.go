@@ -75,9 +75,9 @@ func NewBlock(header *Header, txs []*Transaction) *Block {
 
 	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
-		b.header.SetTxHash(EmptyRootHash)
+		b.header.TxHash = EmptyRootHash
 	} else {
-		b.header.SetTxHash(DeriveSha(Transactions(txs)))
+		b.header.TxHash = DeriveSha(Transactions(txs))
 		b.transactions = make(Transactions, len(txs))
 		copy(b.transactions, txs)
 	}
@@ -96,15 +96,18 @@ func NewBlockWithHeader(header *Header) *Block {
 // modifying a header variable.
 func CopyHeader(h *Header) *Header {
 	cpy := *h
-	if h.Number() != nil {
-		cpy.SetNumber(h.Number())
+	if cpy.Number = new(big.Int); h.Number != nil {
+		cpy.Number.Set(h.Number)
+	}
+	if cpy.Time = new(big.Int); h.Time != nil {
+		cpy.Time.Set(h.Time)
 	}
 	return &cpy
 }
 
 // Number checks if block b1 is less than block b2.
 func Number(b1, b2 *Block) bool {
-	return b1.header.Number().Cmp(b2.header.Number()) < 0
+	return b1.header.Number.Cmp(b2.header.Number) < 0
 }
 
 // Logger returns a sub-logger with block contexts added.
@@ -118,25 +121,25 @@ func (b *Block) Transactions() Transactions {
 }
 
 // Number returns header number.
-func (b *Block) Number() *big.Int { return b.header.Number() }
+func (b *Block) Number() *big.Int { return b.header.Number }
 
 // Time is header time.
-func (b *Block) Time() *big.Int { return b.header.Time() }
+func (b *Block) Time() *big.Int { return b.header.Time }
 
 // NumberU64 is the header number in uint64.
-func (b *Block) NumberU64() uint64 { return b.header.Number().Uint64() }
+func (b *Block) NumberU64() uint64 { return b.header.Number.Uint64() }
 
 // ShardID is the header ShardID.
-func (b *Block) ShardID() uint32 { return b.header.ShardID() }
+func (b *Block) ShardID() uint32 { return b.header.ShardID }
 
 // Root is the header root.
-func (b *Block) Root() common.Hash { return b.header.Root() }
+func (b *Block) Root() common.Hash { return b.header.Root }
 
 // ParentHash return header parent hash.
-func (b *Block) ParentHash() common.Hash { return b.header.ParentHash() }
+func (b *Block) ParentHash() common.Hash { return b.header.ParentHash }
 
 // TxHash returns header tx hash.
-func (b *Block) TxHash() common.Hash { return b.header.TxHash() }
+func (b *Block) TxHash() common.Hash { return b.header.TxHash }
 
 // Header returns header.
 func (b *Block) Header() *Header { return CopyHeader(b.header) }

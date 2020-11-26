@@ -13,6 +13,20 @@ import (
 	"time"
 )
 
+const (
+	// NumTryBroadCast is the number of times trying to broadcast
+	NumTryBroadCast = 3
+	// MsgChanBuffer is the buffer of consensus message handlers.
+	MsgChanBuffer = 1024
+)
+
+const (
+	maxBroadcastNodes       = 10              // broadcast at most maxBroadcastNodes peers that need in sync
+	broadcastTimeout  int64 = 60 * 1000000000 // 1 mins
+	//SyncIDLength is the length of bytes for syncID
+	SyncIDLength = 20
+)
+
 // Node represents a protocol-participating node in the network
 type Node struct {
 	BlockChannel          chan *types.Block // The channel to send newly proposed blocks
@@ -21,13 +35,15 @@ type Node struct {
 	shardChains core.Collection // Shard databases
 	SelfPeer    p2p.Peer
 
+	// Syncing component.
+	syncID [SyncIDLength]byte // a unique ID for the node during the state syncing process with peers
+
 	host p2p.Host // The p2p host used to send/receive p2p messages
 
 	NodeConfig  *nodeconfig.ConfigType // node configuration, including group ID, shard ID, etc
 	chainConfig params.ChainConfig     // Chain configuration.
 
-	isFirstTime bool // the node was started with a fresh database
-
+	isFirstTime         bool // the node was started with a fresh database
 	unixTimeAtNodeStart int64
 }
 
@@ -46,8 +62,30 @@ func (node *Node) Blockchain() *core.BlockChain {
 
 // Start kicks off the node message handling
 func (node *Node) Start() error {
+	// groupID and whether this topic is used for consensus
+	type t struct {
+		tp    nodeconfig.GroupID
+		isCon bool
+	}
+	groups := map[nodeconfig.GroupID]bool{}
+
+	// three topic subscribed by each validator
+	for _, t := range []t{
+		{node.NodeConfig.GetShardGroupID(), true},
+		{node.NodeConfig.GetClientGroupID(), false},
+	} {
+		if _, ok := groups[t.tp]; !ok {
+			groups[t.tp] = t.isCon
+		}
+	}
+
 	// NOTE never gets here
 	return nil
+}
+
+// GetSyncID returns the syncID of this node
+func (node *Node) GetSyncID() [SyncIDLength]byte {
+	return node.syncID
 }
 
 // New creates a new node.
@@ -73,9 +111,13 @@ func New(
 	node.chainConfig = chainConfig
 
 	collection := core.NewCollection(
-		chainDBFactory, &genesisInitializer{&node}, chain.Engine, &chainConfig,
+		chainDBFactory, &genesisInitializer{&node}, nil, &chainConfig,
 	)
 	node.shardChains = collection
+
+	utils.Logger().Info().
+		Interface("genesis block header", node.Blockchain().GetHeaderByNumber(0)).
+		Msg("Genesis block hash")
 
 	return &node
 }
