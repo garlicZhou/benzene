@@ -4,17 +4,42 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/pkg/errors"
 	"io"
+	"net"
 	"os"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 )
 
 var lock sync.Mutex
+var privateNets []*net.IPNet
 
 // PrivKeyStore is used to persist private key to/from file
 type PrivKeyStore struct {
 	Key string `json:"key"`
+}
+
+func init() {
+	//bls_core.Init(bls_core.BLS12_381)
+
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"::1/128",        // IPv6 loopback
+		"fe80::/10",      // IPv6 link-local
+	} {
+		_, block, _ := net.ParseCIDR(cidr)
+		privateNets = append(privateNets, block)
+	}
 }
 
 // Unmarshal is a function that unmarshals the data from the
@@ -31,6 +56,53 @@ func Marshal(v interface{}) (io.Reader, error) {
 		return nil, err
 	}
 	return bytes.NewReader(b), nil
+}
+
+// GetUniqueIDFromIPPort --
+func GetUniqueIDFromIPPort(ip, port string) uint32 {
+	reg, _ := regexp.Compile("[^0-9]+")
+	socketID := reg.ReplaceAllString(ip+port, "") // A integer Id formed by unique IP/PORT pair
+	value, _ := strconv.Atoi(socketID)
+	return uint32(value)
+}
+
+// GetAddressFromBLSPubKeyBytes return the address object from bls pub key.
+//func GetAddressFromBLSPubKeyBytes(pubKeyBytes []byte) common.Address {
+//	pubKey, err := bls.BytesToBLSPublicKey(pubKeyBytes[:])
+//	addr := common.Address{}
+//	if err == nil {
+//		addrBytes := pubKey.GetAddress()
+//		addr.SetBytes(addrBytes[:])
+//	} else {
+//		log.Error("Failed to get address of bls key", "err", err)
+//	}
+//	return addr
+//}
+
+// GetCallStackInfo return a string containing the file name, function name
+// and the line number of a specified entry on the call stack.
+// Inspired by https://github.com/jimlawless/whereami
+func GetCallStackInfo(depthList ...int) string {
+	var depth int
+	if depthList == nil {
+		depth = 1
+	} else {
+		depth = depthList[0]
+	}
+	function, file, line, _ := runtime.Caller(depth)
+	return fmt.Sprintf("File: %s  Function: %s Line: %d",
+		chopPath(file), runtime.FuncForPC(function).Name(), line,
+	)
+}
+
+// chopPath returns the source filename after the last slash.
+// Inspired by https://github.com/jimlawless/whereami
+func chopPath(original string) string {
+	i := strings.LastIndex(original, "/")
+	if i == -1 {
+		return original
+	}
+	return original[i+1:]
 }
 
 // GenKeyP2PRand generates a pair of RSA keys used in libp2p host, using random seed
@@ -119,25 +191,65 @@ func LoadKeyFromFile(keyfile string) (key p2p_crypto.PrivKey, pk p2p_crypto.PubK
 	var keyStruct PrivKeyStore
 	err = Load(keyfile, &keyStruct)
 	if err != nil {
-		Logger().Info().
-			Str("keyfile", keyfile).
-			Msg("No private key can be loaded from file")
-		Logger().Info().Msg("Using random private key")
+		log.Info("No private key can be loaded from file", "keyfile", keyfile)
+		log.Info("Using random private key")
 		key, pk, err = GenKeyP2PRand()
 		if err != nil {
-			Logger().Error().
-				AnErr("GenKeyP2PRand Error", err).
-				Msg("LoadedKeyFromFile")
+			log.Error("LoadedKeyFromFile", "GenKeyP2PRand Error", err)
 			panic(err)
 		}
 		err = SaveKeyToFile(keyfile, key)
 		if err != nil {
-			Logger().Error().
-				AnErr("keyfile", err).
-				Msg("failed to save key to keyfile")
+			log.Error("failed to save key to keyfile", "keyfile", err)
 		}
 		return key, pk, nil
 	}
 	key, pk, err = LoadPrivateKey(keyStruct.Key)
 	return key, pk, err
+}
+
+// IsPrivateIP checks if an IP address is private or not
+func IsPrivateIP(ip net.IP) bool {
+	for _, block := range privateNets {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetPendingCXKey creates pending CXReceiptsProof key given shardID and blockNum
+// it is to avoid adding duplicated CXReceiptsProof from the same source shard
+func GetPendingCXKey(shardID uint32, blockNum uint64) string {
+	key := strconv.FormatUint(uint64(shardID), 10) + "-" + strconv.FormatUint(blockNum, 10)
+	return key
+}
+
+// AppendIfMissing appends an item if it's missing in the slice, returns appended slice and true
+// Otherwise, return the original slice and false
+func AppendIfMissing(slice []common.Address, addr common.Address) ([]common.Address, bool) {
+	for _, ele := range slice {
+		if ele == addr {
+			return slice, false
+		}
+	}
+	return append(slice, addr), true
+}
+
+// PrintError prints the given error in the extended format (%+v) onto stderr.
+func PrintError(err error) {
+	_, _ = fmt.Fprintf(os.Stderr, "%+v\n", err)
+}
+
+// FatalError prints the given error in the extended format (%+v) onto stderr,
+// then exits with status 1.
+func FatalError(err error) {
+	PrintError(err)
+	os.Exit(1)
+}
+
+// FatalErrMsg prints the given error wrapped with the given message in the
+// extended format (%+v) onto stderr, then exits with status 1.
+func FatalErrMsg(err error, format string, args ...interface{}) {
+	FatalError(errors.WithMessagef(err, format, args...))
 }

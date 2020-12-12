@@ -1,22 +1,26 @@
 package p2p
 
 import (
+	nodeconfig "benzene/internal/configs/node"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
+	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/libp2p/go-libp2p"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	libp2p_host "github.com/libp2p/go-libp2p-core/host"
+	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_peerstore "github.com/libp2p/go-libp2p-core/peerstore"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 )
 
 /* 注：
@@ -29,61 +33,108 @@ type Host interface {
 	AddPeer(*Peer) error
 	GetID() libp2p_peer.ID
 	GetP2PHost() libp2p_host.Host
-	
+	GetPeerCount() int
 	ConnectHostPeer(Peer) error
+
+	// SendMessageToGroups sends a message to one or more multicast groups.
+	SendMessageToGroups(groups []nodeconfig.GroupID, msg []byte) error
 	PubSub() *libp2p_pubsub.PubSub
-	JoinShard(topic string) (*libp2p_pubsub.Topic, error)
-	GetShard(topic string) *libp2p_pubsub.Topic
-	SendMessageToGroups(groups []string, msg []byte) error
-	ListTopic() []string
+	C() (int, int, int)
+	GetOrJoin(topic string) (*libp2p_pubsub.Topic, error)
 	ListPeer(topic string) []libp2p_peer.ID
+	ListTopic() []string
 }
 
-/*
- * bls这个库似乎有点问题，测试了一天都没搞好，它跟mcl库又有关联
- * 实在不行就换一个
- */
 type Peer struct {
-	IP				string
-	Port			string
-	Addrs			[]ma.Multiaddr
-	PeerID			libp2p_peer.ID
+	IP     string
+	Port   string
+	Addrs  []ma.Multiaddr
+	PeerID libp2p_peer.ID
 }
+
+const (
+	// SetAsideForConsensus set the number of active validation goroutines for the consensus topic
+	SetAsideForConsensus = 1 << 13
+	// SetAsideOtherwise set the number of active validation goroutines for other topic
+	SetAsideOtherwise = 1 << 11
+	// MaxMessageHandlers ..
+	MaxMessageHandlers = SetAsideForConsensus + SetAsideOtherwise
+	// MaxMessageSize is 2Mb
+	MaxMessageSize = 1 << 21
+)
 
 func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 	listenAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%s", self.IP, self.Port))
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot create listen multiaddr from port %#v", self.Port)
+		return nil, errors.Wrapf(err,
+			"cannot create listen multiaddr from port %#v", self.Port)
 	}
 
 	ctx := context.Background()
-	host, err := libp2p.New(ctx,
-		libp2p.ListenAddrs(listenAddr))
+	p2pHost, err := libp2p.New(ctx,
+		libp2p.ListenAddrs(listenAddr),
+		libp2p.Identity(key),
+		libp2p.EnableNATService(),
+		libp2p.ForceReachabilityPublic(),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p host")
 	}
 
-	pubsub, err := libp2p_pubsub.NewGossipSub(ctx, host)
+	options := []libp2p_pubsub.Option{
+		// WithValidateQueueSize sets the buffer of validate queue. Defaults to 32. When queue is full, validation is throttled and new messages are dropped.
+		libp2p_pubsub.WithValidateQueueSize(512),
+		// WithPeerOutboundQueueSize is an option to set the buffer size for outbound messages to a peer. We start dropping messages to a peer if the outbound queue if full.
+		libp2p_pubsub.WithPeerOutboundQueueSize(64),
+		// WithValidateWorkers sets the number of synchronous validation worker goroutines. Defaults to NumCPU.
+		libp2p_pubsub.WithValidateWorkers(runtime.NumCPU() * 2),
+		// WithValidateThrottle sets the upper bound on the number of active validation goroutines across all topics. The default is 8192.
+		libp2p_pubsub.WithValidateThrottle(MaxMessageHandlers),
+		libp2p_pubsub.WithMaxMessageSize(MaxMessageSize),
+	}
+
+	traceFile := os.Getenv("P2P_TRACEFILE")
+	if len(traceFile) > 0 {
+		var tracer libp2p_pubsub.EventTracer
+		var tracerErr error
+		if strings.HasPrefix(traceFile, "file:") {
+			tracer, tracerErr = libp2p_pubsub.NewJSONTracer(strings.TrimPrefix(traceFile, "file:"))
+		} else {
+			pi, err := libp2p_peer.AddrInfoFromP2pAddr(ma.StringCast(traceFile))
+			if err == nil {
+				tracer, tracerErr = libp2p_pubsub.NewRemoteTracer(ctx, p2pHost, *pi)
+			}
+		}
+		if tracerErr == nil && tracer != nil {
+			options = append(options, libp2p_pubsub.WithEventTracer(tracer))
+		} else {
+			log.Warn("can't add event tracer from P2P_TRACEFILE", "Tracer", traceFile)
+		}
+	}
+
+	pubsub, err := libp2p_pubsub.NewGossipSub(ctx, p2pHost, options...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p pubsub")
 	}
 
-	self.PeerID = host.ID()
-	subLogger := zerolog.New(os.Stdout).With().Str("hostID", host.ID().Pretty()).Logger()
+	self.PeerID = p2pHost.ID()
+	subLogger := log.New("hostID", p2pHost.ID().Pretty())
 
+	// has to save the private key for host
 	h := &HostV2{
-		h:		host,
-		pubsub:	pubsub,
-		joined:	map[string]*libp2p_pubsub.Topic{},
-		self:	*self,
-		priKey:	key,
-		logger: &subLogger,
+		h:      p2pHost,
+		pubsub: pubsub,
+		joined: map[string]*libp2p_pubsub.Topic{},
+		self:   *self,
+		priKey: key,
+		logger: subLogger,
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
+	log.Info("libp2p host ready", "self", net.JoinHostPort(self.IP, self.Port), "PeerID", self.PeerID)
 	return h, nil
 }
 
@@ -91,17 +142,47 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
  * 主机定义
  */
 type HostV2 struct {
-	h		libp2p_host.Host
-	pubsub	*libp2p_pubsub.PubSub
-	joined	map[string]*libp2p_pubsub.Topic
-	self	Peer
-	priKey	libp2p_crypto.PrivKey
-	lock	sync.Mutex
-	logger	*zerolog.Logger
+	h      libp2p_host.Host
+	pubsub *libp2p_pubsub.PubSub
+	joined map[string]*libp2p_pubsub.Topic
+	self   Peer
+	priKey libp2p_crypto.PrivKey
+	lock   sync.Mutex
+	logger log.Logger
 }
 
+// PubSub ..
 func (host *HostV2) PubSub() *libp2p_pubsub.PubSub {
 	return host.pubsub
+}
+
+// C .. -> (total known peers, connected, not connected)
+func (host *HostV2) C() (int, int, int) {
+	connected, not := 0, 0
+	peers := host.h.Peerstore().Peers()
+	for _, peer := range peers {
+		result := host.h.Network().Connectedness(peer)
+		if result == libp2p_network.Connected {
+			connected++
+		} else if result == libp2p_network.NotConnected {
+			not++
+		}
+	}
+	return len(peers), connected, not
+}
+
+// GetOrJoin ..
+func (host *HostV2) GetOrJoin(topic string) (*libp2p_pubsub.Topic, error) {
+	host.lock.Lock()
+	defer host.lock.Unlock()
+	if t, ok := host.joined[topic]; ok {
+		return t, nil
+	} else if t, err := host.pubsub.Join(topic); err != nil {
+		return nil, errors.Wrapf(err, "cannot join pubsub topic %x", topic)
+	} else {
+		host.joined[topic] = t
+		return t, nil
+	}
 }
 
 // 加入某一个分片
@@ -117,32 +198,22 @@ func (host *HostV2) JoinShard(topic string) (*libp2p_pubsub.Topic, error) {
 	}
 }
 
-// 取本分片(将用于接收数据)
-func (host *HostV2) GetShard(topic string) *libp2p_pubsub.Topic {
-	host.lock.Lock()
-	defer host.lock.Unlock()
-	if t, ok := host.joined[topic]; ok {
-		return t
-	} else {
-		return nil
-	}
-}
-
 // groups是分片的数组
 // 明明有个发送数据，然而接收数据不写成方法，而是在node.go中
 // 然而想了想使用libp2p确实应该写在node.go中，但我觉得很不爽
-func (host *HostV2) SendMessageToGroups(groups []string, msg []byte) (err error) {
+func (host *HostV2) SendMessageToGroups(groups []nodeconfig.GroupID, msg []byte) (err error) {
 	if len(msg) == 0 {
 		return errors.New("cannot send out empty message")
 	}
 
 	for _, group := range groups {
-		t := host.GetShard(group)
-		if t != nil {
+		t, e := host.GetOrJoin(string(group))
+		if e != nil {
+			err = e
 			continue
 		}
 
-		e := t.Publish(context.Background(), msg)
+		e = t.Publish(context.Background(), msg)
 		if e != nil {
 			err = e
 			continue
@@ -160,7 +231,7 @@ func (host *HostV2) AddPeer(p *Peer) error {
 	}
 
 	if p.PeerID == "" {
-		host.logger.Error().Msg("AddPeer PeerID is EMPTY")
+		host.logger.Error("AddPeer PeerID is EMPTY")
 		return fmt.Errorf("AddPeer error: peerID is empty")
 	}
 
@@ -169,13 +240,13 @@ func (host *HostV2) AddPeer(p *Peer) error {
 	addr := fmt.Sprintf("/ip4/%s/tcp/%s", p.IP, p.Port)
 	targetAddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
-		host.logger.Error().Err(err).Msg("AddPeer NewMultiaddr error")
+		host.logger.Error("AddPeer NewMultiaddr error", "err", err)
 		return err
 	}
 
 	p.Addrs = append(p.Addrs, targetAddr)
 	host.Peerstore().AddAddrs(p.PeerID, p.Addrs, libp2p_peerstore.PermanentAddrTTL)
-	host.logger.Info().Interface("peer", *p).Msg("AddPeer add to libp2p_peerstore")
+	host.logger.Info("AddPeer add to libp2p_peerstore", "peer", *p)
 	return nil
 }
 
@@ -218,30 +289,41 @@ func (host *HostV2) ListPeer(topic string) []libp2p_peer.ID {
 	return host.joined[topic].ListPeers()
 }
 
+// GetPeerCount ...
+func (host *HostV2) GetPeerCount() int {
+	return host.h.Peerstore().Peers().Len()
+}
+
 // ConnectHostPeer connects to peer host
 func (host *HostV2) ConnectHostPeer(peer Peer) error {
 	ctx := context.Background()
 	addr := fmt.Sprintf("/ip4/%s/tcp/%s/ipfs/%s", peer.IP, peer.Port, peer.PeerID.Pretty())
 	peerAddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
-		host.logger.Error().Err(err).Interface("peer", peer).Msg("ConnectHostPeer")
+		host.logger.Error("ConnectHostPeer", "peer", peer, "err", err)
 		return err
 	}
 
 	// AddrInfoFromP2pAddr将Multiaddr变成AddrInfo.
 	peerInfo, err := libp2p_peer.AddrInfoFromP2pAddr(peerAddr)
 	if err != nil {
-		host.logger.Error().Err(err).Interface("peer", peer).Msg("ConnectHostPeer")
+		host.logger.Error("ConnectHostPeer", "peer", peer, "err", err)
 		return err
 	}
 	if err := host.h.Connect(ctx, *peerInfo); err != nil {
-		host.logger.Warn().Err(err).Interface("peer", peer).Msg("can't connect to peer")
+		host.logger.Error("can't connect to peer", "peer", peer, "err", err)
 		return err
 	}
-	host.logger.Info().Interface("node", *peerInfo).Msg("connected to peer host")
+	host.logger.Info("connected to peer host", "node", *peerInfo)
 	return nil
 }
 
+// NamedTopic represents pubsub topic
+// Name is the human readable topic, groupID
+type NamedTopic struct {
+	Name  string
+	Topic *libp2p_pubsub.Topic
+}
 
 // ConstructMessage constructs the p2p message as [messageType, contentSize, content]
 // 这个代码可能需要改一下，它的messageType好像固定了

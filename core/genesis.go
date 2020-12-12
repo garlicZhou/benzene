@@ -2,14 +2,15 @@ package core
 
 import (
 	"benzene/core/rawdb"
-	"benzene/core/state"
 	"benzene/core/types"
-	"benzene/internal/utils"
 	"benzene/params"
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/trie"
 	"math/big"
 	"os"
 )
@@ -72,12 +73,17 @@ type GenesisAccount struct {
 // to the given database (or discards it if nil).
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if db == nil {
-		utils.Logger().Error().Msg("db should be initialized")
+		log.Error("db should be initialized")
 		os.Exit(1)
 	}
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db), nil)
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, account.Balance)
+		statedb.SetCode(addr, account.Code)
+		statedb.SetNonce(addr, account.Nonce)
+		for key, value := range account.Storage {
+			statedb.SetState(addr, key, value)
+		}
 	}
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
@@ -87,10 +93,10 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		Time:       new(big.Int).SetUint64(g.Timestamp),
 		ShardID:    g.ShardID,
 	}
-	statedb.Commit()
+	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true, nil)
 
-	return types.NewBlock(head, nil)
+	return types.NewBlock(head, nil, new(trie.Trie))
 }
 
 // Commit writes the block and state of a genesis specification to the database.
@@ -108,6 +114,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		return nil, err
 	}
 	if err := rawdb.WriteHeadBlockHash(db, block.Hash()); err != nil {
+		return nil, err
+	}
+	if err := rawdb.WriteHeadFastBlockHash(db, block.Hash()); err != nil {
 		return nil, err
 	}
 	if err := rawdb.WriteHeadHeaderHash(db, block.Hash()); err != nil {

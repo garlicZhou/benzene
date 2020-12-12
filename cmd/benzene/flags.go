@@ -133,6 +133,77 @@ func applyP2PFlags(cmd *cobra.Command, config *benzeneConfig) {
 	}
 }
 
+// http flags
+var (
+	httpEnabledFlag = BoolFlag{
+		Name:     "http",
+		Usage:    "enable HTTP / RPC requests",
+		DefValue: defaultConfig.HTTP.Enabled,
+	}
+	httpIPFlag = StringFlag{
+		Name:     "http.ip",
+		Usage:    "ip address to listen for RPC calls. Use 0.0.0.0 for public endpoint",
+		DefValue: defaultConfig.HTTP.IP,
+	}
+	httpPortFlag = IntFlag{
+		Name:     "http.port",
+		Usage:    "rpc port to listen for HTTP requests",
+		DefValue: defaultConfig.HTTP.Port,
+	}
+)
+
+func applyHTTPFlags(cmd *cobra.Command, config *benzeneConfig) {
+	var isRPCSpecified bool
+
+	if IsFlagChanged(cmd, httpIPFlag) {
+		config.HTTP.IP = GetStringFlagValue(cmd, httpIPFlag)
+		isRPCSpecified = true
+	}
+
+	if IsFlagChanged(cmd, httpPortFlag) {
+		config.HTTP.Port = GetIntFlagValue(cmd, httpPortFlag)
+		isRPCSpecified = true
+	}
+
+	if IsFlagChanged(cmd, httpEnabledFlag) {
+		config.HTTP.Enabled = GetBoolFlagValue(cmd, httpEnabledFlag)
+	} else if isRPCSpecified {
+		config.HTTP.Enabled = true
+	}
+
+}
+
+// ws flags
+var (
+	wsEnabledFlag = BoolFlag{
+		Name:     "ws",
+		Usage:    "enable websocket endpoint",
+		DefValue: defaultConfig.WS.Enabled,
+	}
+	wsIPFlag = StringFlag{
+		Name:     "ws.ip",
+		Usage:    "ip endpoint for websocket. Use 0.0.0.0 for public endpoint",
+		DefValue: defaultConfig.WS.IP,
+	}
+	wsPortFlag = IntFlag{
+		Name:     "ws.port",
+		Usage:    "port for websocket endpoint",
+		DefValue: defaultConfig.WS.Port,
+	}
+)
+
+func applyWSFlags(cmd *cobra.Command, config *benzeneConfig) {
+	if IsFlagChanged(cmd, wsEnabledFlag) {
+		config.WS.Enabled = GetBoolFlagValue(cmd, wsEnabledFlag)
+	}
+	if IsFlagChanged(cmd, wsIPFlag) {
+		config.WS.IP = GetStringFlagValue(cmd, wsIPFlag)
+	}
+	if IsFlagChanged(cmd, wsPortFlag) {
+		config.WS.Port = GetIntFlagValue(cmd, wsPortFlag)
+	}
+}
+
 // pprof flags
 var (
 	pprofEnabledFlag = BoolFlag{

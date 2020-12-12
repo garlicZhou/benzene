@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
+	"io"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -31,7 +32,7 @@ import (
 
 // Constants for block.
 var (
-	EmptyRootHash = DeriveSha(Transactions{})
+	EmptyRootHash  = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 )
 
 // hasherPool holds LegacyKeccak hashers.
@@ -50,12 +51,10 @@ func rlpHash(x interface{}) (h common.Hash) {
 	return h
 }
 
-type Block struct {
-	header       *Header
-	transactions Transactions
-
-	// caches
-	hash atomic.Value
+// EmptyBody returns true if there is no additional 'body' to complete the header
+// that is: no transactions and no uncles.
+func (h *Header) EmptyBody() bool {
+	return h.TxHash == EmptyRootHash
 }
 
 // Body is a simple (mutable, non-safe) data container for storing and moving
@@ -64,20 +63,34 @@ type Body struct {
 	Transactions []*Transaction
 }
 
+type Block struct {
+	header       *Header
+	transactions Transactions
+
+	// caches
+	hash atomic.Value
+	size atomic.Value
+}
+
+// "external" block encoding. used for eth protocol, etc.
+type extblock struct {
+	Header *Header
+	Txs    []*Transaction
+}
+
 // NewBlock creates a new block. The input data is copied,
 // changes to header and to the field values will not affect the
 // block.
 //
 // The values of TxHash in header are ignored and set to
 // values derived from the given txs.
-func NewBlock(header *Header, txs []*Transaction) *Block {
+func NewBlock(header *Header, txs []*Transaction, hasher Hasher) *Block {
 	b := &Block{header: CopyHeader(header)}
 
-	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
-		b.header.TxHash = DeriveSha(Transactions(txs))
+		b.header.TxHash = DeriveSha(Transactions(txs), hasher)
 		b.transactions = make(Transactions, len(txs))
 		copy(b.transactions, txs)
 	}
@@ -105,6 +118,26 @@ func CopyHeader(h *Header) *Header {
 	return &cpy
 }
 
+// DecodeRLP decodes the Ethereum
+func (b *Block) DecodeRLP(s *rlp.Stream) error {
+	var eb extblock
+	_, size, _ := s.Kind()
+	if err := s.Decode(&eb); err != nil {
+		return err
+	}
+	b.header, b.transactions = eb.Header, eb.Txs
+	b.size.Store(common.StorageSize(rlp.ListSize(size)))
+	return nil
+}
+
+// EncodeRLP serializes b into the Ethereum RLP block format.
+func (b *Block) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, extblock{
+		Header: b.header,
+		Txs:    b.transactions,
+	})
+}
+
 // Number checks if block b1 is less than block b2.
 func Number(b1, b2 *Block) bool {
 	return b1.header.Number.Cmp(b2.header.Number) < 0
@@ -118,6 +151,15 @@ func (b *Block) Logger(logger *zerolog.Logger) *zerolog.Logger {
 // Transactions returns transactions.
 func (b *Block) Transactions() Transactions {
 	return b.transactions
+}
+
+func (b *Block) Transaction(hash common.Hash) *Transaction {
+	for _, transaction := range b.transactions {
+		if transaction.Hash() == hash {
+			return transaction
+		}
+	}
+	return nil
 }
 
 // Number returns header number.
@@ -146,6 +188,36 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions} }
+
+// Size returns the true RLP encoded storage size of the block, either by encoding
+// and returning it, or returning a previsouly cached value.
+func (b *Block) Size() common.StorageSize {
+	if size := b.size.Load(); size != nil {
+		return size.(common.StorageSize)
+	}
+	c := writeCounter(0)
+	rlp.Encode(&c, b)
+	b.size.Store(common.StorageSize(c))
+	return common.StorageSize(c)
+}
+
+type writeCounter common.StorageSize
+
+func (c *writeCounter) Write(b []byte) (int, error) {
+	*c += writeCounter(len(b))
+	return len(b), nil
+}
+
+// WithSeal returns a new block with the data from b but the header replaced with
+// the sealed one.
+func (b *Block) WithSeal(header *Header) *Block {
+	cpy := *header
+
+	return &Block{
+		header:       &cpy,
+		transactions: b.transactions,
+	}
+}
 
 // WithBody returns a new block with the given transaction and uncle contents.
 func (b *Block) WithBody(transactions []*Transaction) *Block {

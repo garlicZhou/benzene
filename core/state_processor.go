@@ -1,10 +1,10 @@
 package core
 
 import (
-	consensus_engine "benzene/consensus/engine"
-	"benzene/core/state"
+	engine2 "benzene/consensus/engine"
 	"benzene/core/types"
 	"benzene/params"
+	"github.com/ethereum/go-ethereum/core/state"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -12,14 +12,14 @@ import (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config *params.ChainConfig     // Chain configuration options
-	bc     *BlockChain             // Canonical block chain
-	engine consensus_engine.Engine // Consensus engine used for block rewards
+	config *params.ChainConfig // Chain configuration options
+	bc     *BlockChain         // Canonical block chain
+	engine engine2.Engine      // Consensus engine used for block rewards
 }
 
 // NewStateProcessor initialises a new StateProcessor.
 func NewStateProcessor(
-	config *params.ChainConfig, bc *BlockChain, engine consensus_engine.Engine,
+	config *params.ChainConfig, bc *BlockChain, engine engine2.Engine,
 ) *StateProcessor {
 	return &StateProcessor{
 		config: config,
@@ -37,13 +37,9 @@ func NewStateProcessor(
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
 func (p *StateProcessor) Process(
-	block *types.Block, statedb *state.DB,
+	block *types.Block, statedb *state.StateDB,
 ) (
-	[]*types.Log, error,
+	error,
 ) {
-	var (
-		allLogs  []*types.Log
-	)
-
-	return allLogs, nil
+	return nil
 }

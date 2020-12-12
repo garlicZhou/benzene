@@ -1,4 +1,4 @@
-package core
+package shardchain
 
 import (
 	"fmt"

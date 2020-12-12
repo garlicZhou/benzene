@@ -3,7 +3,6 @@ package engine
 import (
 	"benzene/core/types"
 	"benzene/params"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -24,6 +23,9 @@ type ChainHeaderReader interface {
 
 	// GetHeaderByHash retrieves a block header from the database by its hash.
 	GetHeaderByHash(hash common.Hash) *types.Header
+
+	// ShardID returns shardID
+	ShardID() uint32
 }
 
 // ChainReader defines a small collection of methods needed to access the local
@@ -48,4 +50,5 @@ type Engine interface {
 	// a results channel to retrieve the async verifications (the order is that of
 	// the input slice).
 	VerifyHeaders(chain ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error)
+
 }

@@ -22,4 +22,5 @@ package params
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
+	// TODO: create a config to determine the consensus type for pluggable consensus (hongzicong)
 }

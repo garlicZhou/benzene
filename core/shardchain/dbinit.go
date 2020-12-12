@@ -1,4 +1,4 @@
-package core
+package shardchain
 
 import "github.com/ethereum/go-ethereum/ethdb"
 

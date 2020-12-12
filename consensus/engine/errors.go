@@ -16,7 +16,9 @@
 
 package engine
 
-import "errors"
+import (
+	"github.com/pkg/errors"
+)
 
 var (
 	// ErrUnknownAncestor is returned when validating a block requires an ancestor

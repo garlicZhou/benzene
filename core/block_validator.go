@@ -18,9 +18,9 @@ package core
 
 import (
 	consensus_engine "benzene/consensus/engine"
-	"benzene/core/state"
 	"benzene/core/types"
 	"benzene/params"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +31,7 @@ import (
 type BlockValidator struct {
 	config *params.ChainConfig // Chain configuration options
 	bc     *BlockChain         // Canonical block chain
-	engine consensus_engine.Engine    // Consensus engine used for validating
+	engine consensus_engine.Engine      // Consensus engine used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
@@ -56,7 +56,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.DB) error {
+func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.StateDB) error {
 	return nil
 }
 
