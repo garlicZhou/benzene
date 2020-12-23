@@ -21,7 +21,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		TxHash     common.Hash  `json:"transactionsRoot" gencodec:"required"`
 		Number     *hexutil.Big `json:"number"           gencodec:"required"`
 		Time       *hexutil.Big `json:"timestamp"        gencodec:"required"`
-		ShardID    uint32       `json:"shardID"          gencodec:"required"`
+		ShardID    uint64       `json:"shardID"          gencodec:"required"`
 		Hash       common.Hash  `json:"hash"`
 	}
 	var enc Header
@@ -43,7 +43,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		TxHash     *common.Hash `json:"transactionsRoot" gencodec:"required"`
 		Number     *hexutil.Big `json:"number"           gencodec:"required"`
 		Time       *hexutil.Big `json:"timestamp"        gencodec:"required"`
-		ShardID    *uint32      `json:"shardID"          gencodec:"required"`
+		ShardID    *uint64      `json:"shardID"          gencodec:"required"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {

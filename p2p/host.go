@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	nodeconfig "benzene/internal/configs/node"
+	"benzene/internal/configs"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -37,7 +37,7 @@ type Host interface {
 	ConnectHostPeer(Peer) error
 
 	// SendMessageToGroups sends a message to one or more multicast groups.
-	SendMessageToGroups(groups []nodeconfig.GroupID, msg []byte) error
+	SendMessageToGroups(groups []configs.GroupID, msg []byte) error
 	PubSub() *libp2p_pubsub.PubSub
 	C() (int, int, int)
 	GetOrJoin(topic string) (*libp2p_pubsub.Topic, error)
@@ -201,7 +201,7 @@ func (host *HostV2) JoinShard(topic string) (*libp2p_pubsub.Topic, error) {
 // groups是分片的数组
 // 明明有个发送数据，然而接收数据不写成方法，而是在node.go中
 // 然而想了想使用libp2p确实应该写在node.go中，但我觉得很不爽
-func (host *HostV2) SendMessageToGroups(groups []nodeconfig.GroupID, msg []byte) (err error) {
+func (host *HostV2) SendMessageToGroups(groups []configs.GroupID, msg []byte) (err error) {
 	if len(msg) == 0 {
 		return errors.New("cannot send out empty message")
 	}
@@ -358,3 +358,9 @@ func StringsToAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
 	}
 	return
 }
+
+// BootNodes is a list of boot nodes.
+// It is populated either from default or from user CLI input.
+// TODO: refactor p2p config into a config structure (now part of config is here, part is in
+//   nodeconfig)
+var BootNodes AddrList

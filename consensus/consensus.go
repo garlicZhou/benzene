@@ -12,7 +12,7 @@ type Consensus struct {
 	Blockchain *core.BlockChain
 
 	// Shard Id which this node belongs to
-	ShardID uint32
+	ShardID uint64
 
 	// The p2p host used to send/receive p2p messages
 	host p2p.Host
@@ -20,7 +20,7 @@ type Consensus struct {
 
 // New create a new Consensus record
 func New(
-	host p2p.Host, shard uint32,
+	host p2p.Host, shard uint64,
 ) (*Consensus, error) {
 	consensus := Consensus{}
 	consensus.host = host

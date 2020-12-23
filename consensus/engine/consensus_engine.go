@@ -25,7 +25,7 @@ type ChainHeaderReader interface {
 	GetHeaderByHash(hash common.Hash) *types.Header
 
 	// ShardID returns shardID
-	ShardID() uint32
+	ShardID() uint64
 }
 
 // ChainReader defines a small collection of methods needed to access the local

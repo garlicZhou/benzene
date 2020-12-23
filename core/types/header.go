@@ -18,7 +18,7 @@ type Header struct {
 	TxHash     common.Hash `json:"transactionsRoot" gencodec:"required"`
 	Number     *big.Int    `json:"number"           gencodec:"required"`
 	Time       *big.Int    `json:"timestamp"        gencodec:"required"`
-	ShardID    uint32      `json:"shardID"          gencodec:"required"`
+	ShardID    uint64      `json:"shardID"          gencodec:"required"`
 }
 
 // field type overrides for gencodec
@@ -52,7 +52,7 @@ func (h *Header) Logger(logger *zerolog.Logger) *zerolog.Logger {
 	nlogger := logger.
 		With().
 		Str("blockHash", h.Hash().Hex()).
-		Uint32("blockShard", h.ShardID).
+		Uint64("blockShard", h.ShardID).
 		Uint64("blockNumber", h.Number.Uint64()).
 		Logger()
 	return &nlogger

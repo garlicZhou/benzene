@@ -1,6 +1,10 @@
 package main
 
 import (
+	"benzene/cmd/utils"
+	"benzene/console/prompt"
+	"benzene/internal/bnzapi"
+	"benzene/internal/debug"
 	"benzene/internal/flags"
 	"benzene/internal/genesis"
 	"benzene/node"
@@ -28,7 +32,11 @@ var (
 	app = flags.NewApp(gitCommit, gitDate, "the benzene command line interface")
 	// flags that configure the node
 	nodeFlags = []cli.Flag{
-
+		utils.DataDirFlag,
+		utils.ShardIDFlag,
+		utils.P2PPortFlag,
+		utils.P2PIPFlag,
+		utils.P2PKeyFileFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -44,13 +52,26 @@ func init() {
 	// Initialize the CLI app and start Benzene
 	app.Action = benzene
 	app.Commands = []cli.Command{
-
+		// See consolecmd.go:
+		consoleCommand,
+		attachCommand,
+		javascriptCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = append(app.Flags, nodeFlags...)
 	app.Flags = append(app.Flags, rpcFlags...)
+	app.Flags = append(app.Flags, debug.Flags...)
 	app.Flags = append(app.Flags, consoleFlags...)
 	app.Flags = append(app.Flags, metricsFlags...)
+
+	app.Before = func(ctx *cli.Context) error {
+		return debug.Setup(ctx)
+	}
+	app.After = func(ctx *cli.Context) error {
+		debug.Exit()
+		prompt.Stdin.Close() // Resets terminal mode.
+		return nil
+	}
 }
 
 func main() {
@@ -80,14 +101,13 @@ func benzene(ctx *cli.Context) error {
 
 	startNode(ctx, stack, backend)
 	stack.Wait()
-
-	stack.Wait()
 	return nil
 }
 
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the
 // miner.
-func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
+func startNode(ctx *cli.Context, stack *node.Node, backend bnzapi.Backend) {
+	debug.Memsize.Add("node", stack)
 
 }

@@ -1,25 +1,21 @@
 package node
 
 import (
-	msg_pb "benzene/api/proto/message"
-	proto_node "benzene/api/proto/node"
 	"benzene/api/service"
-	"benzene/consensus"
-	"benzene/core"
-	"benzene/core/shardchain"
-	"benzene/core/types"
-	"benzene/internal/chain"
-	nodeconfig "benzene/internal/configs/node"
-	"benzene/internal/utils"
+	"benzene/internal/configs"
 	"benzene/p2p"
-	"benzene/params"
-	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
+	"github.com/prometheus/tsdb/fileutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -34,46 +30,35 @@ const (
 const (
 	maxBroadcastNodes       = 10              // broadcast at most maxBroadcastNodes peers that need in sync
 	broadcastTimeout  int64 = 60 * 1000000000 // 1 mins
-	//SyncIDLength is the length of bytes for syncID
-	SyncIDLength = 20
 )
 
 // Node represents a protocol-participating node in the network
 type Node struct {
-	Consensus             *consensus.Consensus // Consensus object containing all Consensus related data (e.g. committee members, signatures, commits)
-	BlockChannel          chan *types.Block    // The channel to send newly proposed blocks
-	ConfirmedBlockChannel chan *types.Block    // The channel to send confirmed blocks
-
-	shardChains shardchain.Collection // Shard databases
-	SelfPeer    p2p.Peer
+	SelfPeer p2p.Peer
+	SelfHost p2p.Host // The p2p host used to send/receive p2p messages
 
 	Neighbors sync.Map // All the neighbor nodes, key is the sha256 of Peer IP/Port, value is the p2p.Peer
 
-	TxPool *core.TxPool
-
-	// Syncing component.
-	syncID [SyncIDLength]byte // a unique ID for the node during the state syncing process with peers
-
-	host           p2p.Host         // The p2p host used to send/receive p2p messages
 	serviceManager *service.Manager // Service manager.
 
-	config      *Config
-	chainConfig params.ChainConfig     // Chain configuration.
-
-	isFirstTime bool // the node was started with a fresh database
+	eventmux *event.TypeMux
+	config   *Config
 
 	log           log.Logger
-	stop          chan struct{} // Channel to wait for termination notifications
-	startStopLock sync.Mutex    // Start/Stop are protected by an additional lock
-	state         int           // Tracks state of node lifecycle
+	dirLock       fileutil.Releaser // prevents concurrent use of instance directory
+	stop          chan struct{}     // Channel to wait for termination notifications
+	startStopLock sync.Mutex        // Start/Stop are protected by an additional lock
+	state         int               // Tracks state of node lifecycle
 
 	lock          sync.Mutex
+	lifecycles    []Lifecycle // All registered backends, services, and auxiliary services that have a lifecycle
 	rpcAPIs       []rpc.API   // List of APIs currently provided by the node
 	http          *httpServer //
 	ws            *httpServer //
 	ipc           *ipcServer  // Stores information about the ipc http server
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
 
+	databases map[*closeTrackingDB]struct{} // All open databases
 }
 
 const (
@@ -82,181 +67,71 @@ const (
 	closedState
 )
 
-// Blockchain returns the blockchain for the node's current shard.
-func (node *Node) Blockchain() *core.BlockChain {
-	shardID := node.config.ShardID
-	bc, err := node.shardChains.ShardChain(shardID)
-	if err != nil {
-		utils.Logger().Error().
-			Uint32("shardID", shardID).
-			Err(err).
-			Msg("cannot get shard chain")
-	}
-	return bc
-}
-
-// TODO: make this batch more transactions (hongzicong)
-// Broadcast the transaction to nodes with the topic shardGroupID
-func (node *Node) tryBroadcast(tx *types.Transaction) {
-	msg := proto_node.ConstructTransactionListMessageAccount(types.Transactions{tx})
-
-	shardGroupID := nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(tx.ShardID()))
-	utils.Logger().Info().Str("shardGroupID", string(shardGroupID)).Msg("tryBroadcast")
-
-	for attempt := 0; attempt < NumTryBroadCast; attempt++ {
-		if err := node.host.SendMessageToGroups([]nodeconfig.GroupID{shardGroupID},
-			p2p.ConstructMessage(msg)); err != nil {
-			utils.Logger().Error().Int("attempt", attempt).Msg("Error when trying to broadcast tx")
-		} else {
-			break
-		}
-	}
-}
-
-// AddPendingTransaction adds one new transaction to the pending transaction list.
-// This is only called from SDK.
-func (node *Node) AddPendingTransaction(newTx *types.Transaction) error {
-	if newTx.ShardID() == node.config.ShardID {
-		errs := node.addPendingTransactions(types.Transactions{newTx})
-		var err error
-		for i := range errs {
-			if errs[i] != nil {
-				utils.Logger().Info().Err(errs[i]).Msg("[AddPendingTransaction] Failed adding new transaction")
-				err = errs[i]
-				break
-			}
-		}
-		if err == nil {
-			utils.Logger().Info().Str("Hash", newTx.Hash().Hex()).Msg("Broadcasting Tx")
-			node.tryBroadcast(newTx)
-		}
-		return err
-	}
-	return errors.New("shard do not match")
-}
-
-// Add new transactions to the pending transaction list.
-func (node *Node) addPendingTransactions(newTxs types.Transactions) []error {
-	poolTxs := types.Transactions{}
-	errs := []error{}
-	for _, tx := range newTxs {
-		// TODO: change this validation rule according to the cross-shard mechanism (hongzicong)
-		if tx.ShardID() != tx.ToShardID() {
-			errs = append(errs, errors.New("cross-shard tx not accepted yet"))
-			continue
-		}
-		poolTxs = append(poolTxs, tx)
-	}
-	errs = append(errs, node.TxPool.AddRemotes(poolTxs)...)
-
-	pendingCount, queueCount := node.TxPool.Stats()
-	utils.Logger().Info().
-		Interface("err", errs).
-		Int("length of newTxs", len(newTxs)).
-		Int("totalPending", pendingCount).
-		Int("totalQueued", queueCount).
-		Msg("[addPendingTransactions] Adding more transactions")
-	return errs
-}
-
-type withError struct {
-	err     error
-	payload interface{}
-}
-
-// Start kicks off the node message handling
-func (n *Node) Start() error {
-	n.startStopLock.Lock()
-	defer n.startStopLock.Unlock()
-
-	n.lock.Lock()
-	switch n.state {
-	case runningState:
-		n.lock.Unlock()
-		return ErrNodeRunning
-	case closedState:
-		n.lock.Unlock()
-		return ErrNodeStopped
-	}
-	n.state = runningState
-	err := n.startNetworking()
-	n.lock.Unlock()
-
-	// Check if networking startup failed.
-	if err != nil {
-		n.doClose(nil)
-		return err
-	}
-
-	// groupID and whether this topic is used for consensus
-	type t struct {
-		tp    nodeconfig.GroupID
-		isCon bool
-	}
-	groups := map[nodeconfig.GroupID]bool{}
-
-	// three topic subscribed by each validator
-	for _, t := range []t{
-		{n.config.GetShardGroupID(), true},
-		{n.config.GetClientGroupID(), false},
-	} {
-		if _, ok := groups[t.tp]; !ok {
-			groups[t.tp] = t.isCon
-		}
-	}
-
-	type u struct {
-		p2p.NamedTopic
-		consensusBound bool
-	}
-
-	var allTopics []u
-
-	utils.Logger().Debug().
-		Interface("topics-ended-up-with", groups).
-		Uint32("shard-id", n.Consensus.ShardID).
-		Msg("starting with these topics")
-
-	for key, isCon := range groups {
-		topicHandle, err := n.host.GetOrJoin(string(key))
-		if err != nil {
-			return err
-		}
-		allTopics = append(
-			allTopics, u{
-				NamedTopic:     p2p.NamedTopic{Name: string(key), Topic: topicHandle},
-				consensusBound: isCon,
-			},
-		)
-	}
-
-	// p2p consensus message handler function
-	type p2pHandlerConsensus func(
-		ctx context.Context,
-		msg *msg_pb.Message,
-	) error
-
-	errChan := make(chan withError, 100)
-
-	for e := range errChan {
-		utils.SampledLogger().Info().
-			Interface("item", e.payload).
-			Msgf("[p2p]: issue while handling incoming p2p message: %v", e.err)
-	}
-
-	return nil
-}
-
-// GetSyncID returns the syncID of this node
-func (node *Node) GetSyncID() [SyncIDLength]byte {
-	return node.syncID
-}
+//// TODO: make this batch more transactions
+//// Broadcast the transaction to nodes with the topic shardGroupID
+//func (node *Node) tryBroadcast(tx *types.Transaction) {
+//	msg := proto_node.ConstructTransactionListMessageAccount(types.Transactions{tx})
+//
+//	shardGroupID := configs.NewGroupIDByShardID(configs.ShardID(tx.ShardID()))
+//	log.Info("tryBroadcast", "shardGroupID", string(shardGroupID))
+//
+//	for attempt := 0; attempt < NumTryBroadCast; attempt++ {
+//		if err := node.SelfHost.SendMessageToGroups([]configs.GroupID{shardGroupID}, p2p.ConstructMessage(msg)); err != nil {
+//			log.Error("Error when trying to broadcast tx", "attempt", attempt)
+//		} else {
+//			break
+//		}
+//	}
+//}
+//
+//// AddPendingTransaction adds one new transaction to the pending transaction list.
+//// This is only called from SDK.
+//func (node *Node) AddPendingTransaction(newTx *types.Transaction) error {
+//	if newTx.ShardID() == node.config.ShardID {
+//		errs := node.addPendingTransactions(types.Transactions{newTx})
+//		var err error
+//		for i := range errs {
+//			if errs[i] != nil {
+//				log.Info("[AddPendingTransaction] Failed adding new transaction", "err", errs[i])
+//				err = errs[i]
+//				break
+//			}
+//		}
+//		if err == nil {
+//			log.Info("Broadcasting Tx", "Hash", newTx.Hash().Hex())
+//			node.tryBroadcast(newTx)
+//		}
+//		return err
+//	}
+//	return errors.New("shard do not match")
+//}
+//
+//// Add new transactions to the pending transaction list.
+//func (node *Node) addPendingTransactions(newTxs types.Transactions) []error {
+//	poolTxs := types.Transactions{}
+//	errs := []error{}
+//	for _, tx := range newTxs {
+//		// TODO: change this validation rule according to the cross-shard mechanism (hongzicong)
+//		if tx.ShardID() != tx.ToShardID() {
+//			errs = append(errs, errors.New("cross-shard tx not accepted yet"))
+//			continue
+//		}
+//		poolTxs = append(poolTxs, tx)
+//	}
+//	errs = append(errs, node.TxPool.AddRemotes(poolTxs)...)
+//
+//	pendingCount, queueCount := node.TxPool.Stats()
+//	log.Info("[addPendingTransactions] Adding more transactions",
+//		"err", errs,
+//		"length of newTxs", len(newTxs),
+//		"totalPending", pendingCount,
+//		"totalQueued", queueCount)
+//	return errs
+//}
 
 // New creates a new P2P node, ready for protocol registration.
 func New(
 	host p2p.Host,
-	consensusObj *consensus.Consensus,
-	chainDBFactory shardchain.DBFactory,
 	conf *Config,
 ) (*Node, error) {
 	// Copy config and resolve the datadir so future changes to the current
@@ -290,60 +165,16 @@ func New(
 		inprocHandler: rpc.NewServer(),
 		log:           conf.Logger,
 		stop:          make(chan struct{}),
+		databases:     make(map[*closeTrackingDB]struct{}),
 	}
 
 	// Register built-in APIs.
 	node.rpcAPIs = append(node.rpcAPIs, node.apis()...)
 
-	if consensusObj != nil {
-		node.config = nodeconfig.GetShardConfig(consensusObj.ShardID)
-	} else {
-		node.config = nodeconfig.GetDefaultConfig()
-	}
-
 	if host != nil {
-		node.host = host
+		node.SelfHost = host
 		node.SelfPeer = host.GetSelfPeer()
 	}
-
-	chainConfig := params.ChainConfig{}
-	node.chainConfig = chainConfig
-
-	engine := chain.New()
-
-	collection := shardchain.NewCollection(
-		chainDBFactory, &genesisInitializer{&node}, engine, nil, &chainConfig,
-	)
-	node.shardChains = collection
-
-	if host != nil && consensusObj != nil {
-		// Consensus and associated channel to communicate blocks
-		node.Consensus = consensusObj
-
-		// Load the chains.
-		blockchain := node.Blockchain() // this also sets node.isFirstTime if the DB is fresh
-
-		if blockchain == nil {
-			var err error
-			shardID := node.config.ShardID
-			// HACK get the real error reason
-			_, err = node.shardChains.ShardChain(shardID)
-			fmt.Fprintf(os.Stderr, "Cannot initialize node: %v\n", err)
-			os.Exit(-1)
-		}
-
-		node.BlockChannel = make(chan *types.Block)
-		node.ConfirmedBlockChannel = make(chan *types.Block)
-
-		txPoolConfig := core.DefaultTxPoolConfig
-		txPoolConfig.Journal = fmt.Sprintf("%v/%v", node.config.DBDir, txPoolConfig.Journal)
-		node.TxPool = core.NewTxPool(txPoolConfig, node.Blockchain().Config(), blockchain)
-
-	}
-
-	utils.Logger().Info().
-		Interface("genesis block header", node.Blockchain().GetHeaderByNumber(0)).
-		Msg("Genesis block hash")
 
 	// Configure RPC servers.
 	node.http = newHTTPServer(node.log, conf.HTTPTimeouts)
@@ -353,6 +184,93 @@ func New(
 	return &node, nil
 }
 
+// Start kicks off the node message handling
+func (n *Node) Start() error {
+	n.startStopLock.Lock()
+	defer n.startStopLock.Unlock()
+
+	n.lock.Lock()
+	switch n.state {
+	case runningState:
+		n.lock.Unlock()
+		return ErrNodeRunning
+	case closedState:
+		n.lock.Unlock()
+		return ErrNodeStopped
+	}
+	n.state = runningState
+	err := n.startNetworking()
+	lifecycles := make([]Lifecycle, len(n.lifecycles))
+	copy(lifecycles, n.lifecycles)
+	n.lock.Unlock()
+
+	// Check if networking startup failed.
+	if err != nil {
+		n.doClose(nil)
+		return err
+	}
+	// Start all registered lifecycles.
+	var started []Lifecycle
+	for _, lifecycle := range lifecycles {
+		if err = lifecycle.Start(); err != nil {
+			break
+		}
+		started = append(started, lifecycle)
+	}
+	// Check if any lifecycle failed to start.
+	if err != nil {
+		n.stopServices(started)
+		n.doClose(nil)
+	}
+	return err
+}
+
+// Close stops the Node and releases resources acquired in
+// Node constructor New.
+func (n *Node) Close() error {
+	n.startStopLock.Lock()
+	defer n.startStopLock.Unlock()
+
+	n.lock.Lock()
+	state := n.state
+	n.lock.Unlock()
+	switch state {
+	case initializingState:
+		// The node was never started.
+		return n.doClose(nil)
+	case runningState:
+		// The node was started, release resources acquired by Start().
+		var errs []error
+		if err := n.stopServices(n.lifecycles); err != nil {
+			errs = append(errs, err)
+		}
+		return n.doClose(errs)
+	case closedState:
+		return ErrNodeStopped
+	default:
+		panic(fmt.Sprintf("node is in unknown state %d", state))
+	}
+}
+
+// doClose releases resources acquired by New(), collecting errors.
+func (n *Node) doClose(errs []error) error {
+	// Release instance directory lock.
+	n.closeDataDir()
+
+	// Unblock n.Wait.
+	close(n.stop)
+
+	// Report any errors that might have occurred.
+	switch len(errs) {
+	case 0:
+		return nil
+	case 1:
+		return errs[0]
+	default:
+		return fmt.Errorf("%v", errs)
+	}
+}
+
 // AddPeers adds neighbors nodes
 func (node *Node) AddPeers(peers []*p2p.Peer) int {
 	for _, p := range peers {
@@ -360,28 +278,23 @@ func (node *Node) AddPeers(peers []*p2p.Peer) int {
 		_, ok := node.Neighbors.LoadOrStore(key, *p)
 		if !ok {
 			// !ok means new peer is stored
-			node.host.AddPeer(p)
+			node.SelfHost.AddPeer(p)
 			continue
 		}
 	}
 
-	return node.host.GetPeerCount()
+	return node.SelfHost.GetPeerCount()
 }
 
 func (node *Node) initNodeConfiguration() (service.NodeConfig, chan p2p.Peer, error) {
 	chanPeer := make(chan p2p.Peer)
 	nodeConfig := service.NodeConfig{
-		ShardGroupID: node.config.GetShardGroupID(),
-		Actions:      map[nodeconfig.GroupID]nodeconfig.ActionType{},
-	}
-
-	groups := []nodeconfig.GroupID{
-		node.config.GetShardGroupID(),
-		node.config.GetClientGroupID(),
+		ShardGroupID: node.config.GroupID,
+		Actions:      map[configs.GroupID]configs.ActionType{},
 	}
 
 	// force the side effect of topic join
-	if err := node.host.SendMessageToGroups(groups, []byte{}); err != nil {
+	if err := node.SelfHost.SendMessageToGroups(node.config.GroupID, []byte{}); err != nil {
 		return nodeConfig, nil, err
 	}
 
@@ -391,15 +304,6 @@ func (node *Node) initNodeConfiguration() (service.NodeConfig, chan p2p.Peer, er
 // ServiceManager ...
 func (node *Node) ServiceManager() *service.Manager {
 	return node.serviceManager
-}
-
-// ShutDown gracefully shut down the node server and dump the in-memory blockchain state into DB.
-func (node *Node) ShutDown() {
-	node.Blockchain().Stop()
-	const msg = "Successfully shut down!\n"
-	utils.Logger().Print(msg)
-	fmt.Print(msg)
-	os.Exit(0)
 }
 
 // startNetworking starts all network endpoints.
@@ -414,6 +318,64 @@ func (n *Node) startNetworking() error {
 		//n.server.Stop()
 	}
 	return err
+}
+
+// containsLifecycle checks if 'lfs' contains 'l'.
+func containsLifecycle(lfs []Lifecycle, l Lifecycle) bool {
+	for _, obj := range lfs {
+		if obj == l {
+			return true
+		}
+	}
+	return false
+}
+
+// stopServices terminates running services, RPC and p2p networking.
+// It is the inverse of Start.
+func (n *Node) stopServices(running []Lifecycle) error {
+	n.stopRPC()
+
+	// Stop running lifecycles in reverse order.
+	failure := &StopError{Services: make(map[reflect.Type]error)}
+	for i := len(running) - 1; i >= 0; i-- {
+		if err := running[i].Stop(); err != nil {
+			failure.Services[reflect.TypeOf(running[i])] = err
+		}
+	}
+
+	if len(failure.Services) > 0 {
+		return failure
+	}
+	return nil
+}
+
+func (n *Node) openDataDir() error {
+	if n.config.DataDir == "" {
+		return nil // ephemeral
+	}
+
+	instdir := filepath.Join(n.config.DataDir, n.config.name())
+	if err := os.MkdirAll(instdir, 0700); err != nil {
+		return err
+	}
+	// Lock the instance directory to prevent concurrent use by another instance as well as
+	// accidental use of the instance directory as a database.
+	release, _, err := fileutil.Flock(filepath.Join(instdir, "LOCK"))
+	if err != nil {
+		return convertFileLockError(err)
+	}
+	n.dirLock = release
+	return nil
+}
+
+func (n *Node) closeDataDir() {
+	// Release instance directory lock.
+	if n.dirLock != nil {
+		if err := n.dirLock.Release(); err != nil {
+			n.log.Error("Can't release datadir lock", "err", err)
+		}
+		n.dirLock = nil
+	}
 }
 
 // configureRPC is a helper method to configure all the various RPC endpoints during node
@@ -501,6 +463,78 @@ func (n *Node) Wait() {
 	<-n.stop
 }
 
+// RegisterLifecycle registers the given Lifecycle on the node.
+func (n *Node) RegisterLifecycle(lifecycle Lifecycle) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register lifecycle on running/stopped node")
+	}
+	if containsLifecycle(n.lifecycles, lifecycle) {
+		panic(fmt.Sprintf("attempt to register lifecycle %T more than once", lifecycle))
+	}
+	n.lifecycles = append(n.lifecycles, lifecycle)
+}
+
+// RegisterAPIs registers the APIs a service provides on the node.
+func (n *Node) RegisterAPIs(apis []rpc.API) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register APIs on running/stopped node")
+	}
+	n.rpcAPIs = append(n.rpcAPIs, apis...)
+}
+
+// RegisterHandler mounts a handler on the given path on the canonical HTTP server.
+//
+// The name of the handler is shown in a log message when the HTTP server starts
+// and should be a descriptive term for the service provided by the handler.
+func (n *Node) RegisterHandler(name, path string, handler http.Handler) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state != initializingState {
+		panic("can't register HTTP handler on running/stopped node")
+	}
+	n.http.mux.Handle(path, handler)
+	n.http.handlerNames[path] = name
+}
+
+// Attach creates an RPC client attached to an in-process API handler.
+func (n *Node) Attach() (*rpc.Client, error) {
+	return rpc.DialInProc(n.inprocHandler), nil
+}
+
+// RPCHandler returns the in-process RPC request handler.
+func (n *Node) RPCHandler() (*rpc.Server, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+
+	if n.state == closedState {
+		return nil, ErrNodeStopped
+	}
+	return n.inprocHandler, nil
+}
+
+// Config returns the configuration of node.
+func (n *Node) Config() *Config {
+	return n.config
+}
+
+// DataDir retrieves the current datadir used by the protocol stack.
+// Deprecated: No files should be stored in this directory, use InstanceDir instead.
+func (n *Node) DataDir() string {
+	return n.config.DataDir
+}
+
+// InstanceDir retrieves the instance directory used by the protocol stack.
+func (n *Node) InstanceDir() string {
+	return n.config.instanceDir()
+}
+
 // IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
 func (n *Node) IPCEndpoint() string {
 	return n.ipc.endpoint
@@ -517,4 +551,72 @@ func (n *Node) WSEndpoint() string {
 		return "ws://" + n.http.listenAddr()
 	}
 	return "ws://" + n.ws.listenAddr()
+}
+
+// EventMux retrieves the event multiplexer used by all the network services in
+// the current protocol stack.
+func (n *Node) EventMux() *event.TypeMux {
+	return n.eventmux
+}
+
+// OpenDatabase opens an existing database with the given name (or creates one if no
+// previous can be found) from within the node's instance directory. If the node is
+// ephemeral, a memory database is returned.
+func (n *Node) OpenDatabase(shardid uint64, name string, cache, handles int, namespace string) (ethdb.Database, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	if n.state == closedState {
+		return nil, ErrNodeStopped
+	}
+
+	var db ethdb.Database
+	var err error
+	if n.config.DataDir == "" {
+		db = rawdb.NewMemoryDatabase()
+	} else {
+		db, err = rawdb.NewLevelDBDatabase(n.ResolvePath(fmt.Sprintf("%s_%d", name, shardid)), cache, handles, namespace)
+	}
+
+	if err == nil {
+		db = n.wrapDatabase(db)
+	}
+	return db, err
+}
+
+// ResolvePath returns the absolute path of a resource in the instance directory.
+func (n *Node) ResolvePath(x string) string {
+	return n.config.ResolvePath(x)
+}
+
+// closeTrackingDB wraps the Close method of a database. When the database is closed by the
+// service, the wrapper removes it from the node's database map. This ensures that Node
+// won't auto-close the database if it is closed by the service that opened it.
+type closeTrackingDB struct {
+	ethdb.Database
+	n *Node
+}
+
+func (db *closeTrackingDB) Close() error {
+	db.n.lock.Lock()
+	delete(db.n.databases, db)
+	db.n.lock.Unlock()
+	return db.Database.Close()
+}
+
+// wrapDatabase ensures the database will be auto-closed when Node is closed.
+func (n *Node) wrapDatabase(db ethdb.Database) ethdb.Database {
+	wrapper := &closeTrackingDB{db, n}
+	n.databases[wrapper] = struct{}{}
+	return wrapper
+}
+
+// closeDatabases closes all open databases.
+func (n *Node) closeDatabases() (errors []error) {
+	for db := range n.databases {
+		delete(n.databases, db)
+		if err := db.Database.Close(); err != nil {
+			errors = append(errors, err)
+		}
+	}
+	return errors
 }

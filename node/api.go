@@ -2,19 +2,18 @@ package node
 
 import (
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"strings"
 )
 
-// ListPeer return list of peers for a certain topic
-func (node *Node) ListPeer(topic string) []peer.ID {
-	return node.host.ListPeer(topic)
-}
-
-// ListTopic return list of topics the node subscribed
-func (node *Node) ListTopic() []string {
-	return node.host.ListTopic()
-}
+//// ListPeer return list of peers for a certain topic
+//func (node *Node) ListPeer(topic string) []peer.ID {
+//	return node.host.ListPeer(topic)
+//}
+//
+//// ListTopic return list of topics the node subscribed
+//func (node *Node) ListTopic() []string {
+//	return node.host.ListTopic()
+//}
 
 // apis returns the collection of built-in RPC APIs.
 func (n *Node) apis() []rpc.API {

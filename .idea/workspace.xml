@@ -23,54 +23,149 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/bnz/bnz.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/flags/helpers.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/api.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/config.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/defaults.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/endpoints.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/errors.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/lifecycle.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/rpcstack.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/abi.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/abi_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/argument.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/auth.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/backend.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/backends/simulated.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/backends/simulated_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/base.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/base_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/bind.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/bind_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/template.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/util.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/bind/util_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/doc.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/error.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/event.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/event_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/method.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/method_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/pack.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/pack_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/packing_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/reflect.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/reflect_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/topics.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/topics_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/type.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/type_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/unpack.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/abi/unpack_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/accounts.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/accounts_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/errors.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/external/backend.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/hd.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/hd_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/account_cache.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/account_cache_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/file_cache.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/key.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/keystore.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/keystore_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/passphrase.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/passphrase_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/plain.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/plain_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/presale.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/dupes/1" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/dupes/2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/dupes/foo" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/.hiddenfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/README" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/UTC--2016-03-22T12-57-55.920751759Z--7ef5a6135f1fd6a02593eedc869c6d41d934aef8" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/aaa" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/empty" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/foo/fd9bd350f08ee3c0c19b85a8e16114a11a60aa4e" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/garbage" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/no-address" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/zero" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/keystore/zzz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/v1/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/v1_test_vector.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/v3_test_vector.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/testdata/very-light-scrypt.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/wallet.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/watch.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/keystore/watch_fallback.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/manager.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/sort.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/url.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accounts/url_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/api/service/networkinfo/service.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnz/api.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnz/api_backend.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnz/backend.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnz/config.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/benzene/consolecmd.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/utils/cmd.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/utils/customflags.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/utils/flags.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/console/bridge.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/console/console.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/console/prompt/prompter.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/rawdb/accessors_state.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/bnzapi/api.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/bnzapi/backend.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/api.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/flags.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/loudpanic.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/loudpanic_fallback.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/trace.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/debug/trace_fallback.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/jsre/completion.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/jsre/completion_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/jsre/jsre.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/jsre/jsre_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/jsre/pretty.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/web3ext/web3ext.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/node/doc.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/params/version.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/benzene.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/benzene.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/proto/message/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/proto/message/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/service/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/service/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/service/manager.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/service/manager.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnz/bnz.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bznconfig" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/benzene/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/flag.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/flags.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/flags.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/benzene/default.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/benzene/flags.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/benzene/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/parse.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/benzene/register.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/consensus/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/consensus.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/consensus/engine/consensus_engine.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/engine/consensus_engine.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/engine/errors.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/engine/errors.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/block_validator.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/block_validator.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/blockchain.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/blockchain.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/blockchain_insert.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/blockchain_insert.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/dbfactory.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/dbinit.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/error.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/error.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/events.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/events.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/genesis.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/genesis.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/headerchain.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/headerchain.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/accessor_chain.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessor_chain.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/accessor_indexes.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessor_indexes.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/interfaces.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/rawdb/accessor_chain.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessors_chain.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/rawdb/accessor_indexes.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessors_indexes.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/rawdb/schema.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/schema.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/shardingchain.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/state/database.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/state/state_object.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/state/statedb.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/state_processor.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/state_processor.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/shardchain/dbfactory.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/shardchain/dbinit.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/shardchain/shardchains.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/shardchains.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/types/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/block.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/derive_sha.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/derive_sha.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/log.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/log.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/gen_header_json.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/gen_log_json.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/gen_tx_json.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/header.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/header.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/core/types/transaction.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/transaction.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/configs/node/config.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/configs/node/group.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/configs/node/group.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/utils/singleton.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/utils/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/utils/utils.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/chain/sharding.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/chain/sharding.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/configs/node/group.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/configs/group.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/flags/helpers.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/flags/helpers.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/api.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/api.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/defaults.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/defaults.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/node_genesis.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/p2p/host.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/host.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/params/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/params/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/zerolog-latest/benzene.log" beforeDir="false" />
@@ -87,7 +182,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" path="C:\Go" />
+  <component name="GOROOT" url="file://D:/Go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -100,14 +195,14 @@
   <component name="PropertiesComponent">
     <property name="DefaultGoTemplateProperty" value="Go File" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="configurable.Global.GOPATH.is.expanded" value="true" />
-    <property name="configurable.Module.GOPATH.is.expanded" value="false" />
-    <property name="configurable.Project.GOPATH.is.expanded" value="true" />
+    <property name="configurable..is.expanded" value="false" />
+    <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../harmony" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -118,21 +213,21 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\cszhong\Desktop\benzene\node" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\core\rawdb" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\core" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\api\service" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\core\state" />
+      <recent name="E:\GolandProjects\benzene" />
+      <recent name="E:\GolandProjects\benzene\internal" />
+      <recent name="E:\GolandProjects\benzene\params" />
+      <recent name="E:\GolandProjects\benzene\core\shardchain" />
+      <recent name="E:\GolandProjects\benzene\api\service" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="E:\GolandProjects\benzene\core" />
+      <recent name="E:\GolandProjects\benzene\internal\configs" />
       <recent name="C:\Users\cszhong\Desktop\benzene\consensus\engine" />
       <recent name="C:\Users\cszhong\Desktop\benzene\internal\chain" />
       <recent name="C:\Users\cszhong\Desktop\benzene\consensus" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\consensus\chain" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\core\shardchain" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Go Build.benzene-console">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="benzene" />
       <working_directory value="$PROJECT_DIR$" />
@@ -143,17 +238,47 @@
       <directory value="$PROJECT_DIR$" />
       <method v="2" />
     </configuration>
-    <configuration name="go build benzene/cmd/benzene" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+    <configuration name="benzene-console" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="benzene" />
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
-      <parameters value="--config bznconfig" />
+      <parameters value="console --datadir=E:\GolandProjects\benzene_workspace --p2p.keyfile=E:\GolandProjects\benzene_workspace\.bnzkey -run.shard=1" />
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
       <package value="benzene/cmd/benzene" />
-      <directory value="$PROJECT_DIR$/cmd" />
+      <directory value="$PROJECT_DIR$" />
+      <output_directory value="$PROJECT_DIR$/build/bin" />
       <method v="2" />
     </configuration>
+    <configuration name="benzene-help" type="GoApplicationRunConfiguration" factoryName="Go Application">
+      <module name="benzene" />
+      <working_directory value="$PROJECT_DIR$" />
+      <go_parameters value="-i" />
+      <parameters value="help" />
+      <kind value="PACKAGE" />
+      <filePath value="$PROJECT_DIR$" />
+      <package value="benzene/cmd/benzene" />
+      <directory value="$PROJECT_DIR$" />
+      <output_directory value="$PROJECT_DIR$/build/bin" />
+      <method v="2" />
+    </configuration>
+    <configuration name="benzene-version" type="GoApplicationRunConfiguration" factoryName="Go Application">
+      <module name="benzene" />
+      <working_directory value="$PROJECT_DIR$" />
+      <go_parameters value="-i" />
+      <parameters value="-version" />
+      <kind value="PACKAGE" />
+      <filePath value="$PROJECT_DIR$" />
+      <package value="benzene/cmd/benzene" />
+      <directory value="$PROJECT_DIR$" />
+      <output_directory value="$PROJECT_DIR$/build/bin" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Go Build.benzene-help" />
+      <item itemvalue="Go Build.benzene-version" />
+      <item itemvalue="Go Build.benzene-console" />
+    </list>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TypeScriptGeneratedFilesManager">
@@ -174,107 +299,21 @@
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
   </component>
-  <component name="WindowStateProjectService">
-    <state x="475" y="197" key="#Go_Modules" timestamp="1605714168063">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="475" y="197" key="#Go_Modules/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1605714168063" />
-    <state x="546" y="276" key="#Log_Highlighting_(ideolog)" timestamp="1606377799536">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state x="546" y="276" key="#Log_Highlighting_(ideolog)/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606377799536" />
-    <state x="-1246" y="149" width="1092" height="714" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1606226400112">
-      <screen x="-1680" y="0" width="1680" height="1010" />
-    </state>
-    <state x="138" y="14" width="1092" height="714" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606031570440" />
-    <state x="-1246" y="149" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606226400112" />
-    <state x="485" y="221" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1607616140060">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="485" y="221" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1607616140060" />
-    <state x="597" y="307" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606529287398" />
-    <state x="-920" y="199" key="#com.intellij.ide.macro.MacrosDialog" timestamp="1606209672053">
-      <screen x="-1680" y="0" width="1680" height="1010" />
-    </state>
-    <state x="-920" y="199" key="#com.intellij.ide.macro.MacrosDialog/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606209672053" />
-    <state x="570" y="252" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1605876178258">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state x="570" y="252" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1605876178258" />
-    <state x="576" y="224" key="EnvironmentVariablesDialog" timestamp="1605714166890">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="576" y="224" key="EnvironmentVariablesDialog/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1605714166890" />
-    <state x="463" y="119" key="FileChooserDialogImpl" timestamp="1607351865530">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="463" y="119" key="FileChooserDialogImpl/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1607351865530" />
-    <state x="569" y="165" key="FileChooserDialogImpl/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606987111668" />
-    <state width="1637" height="319" key="GridCell.Tab.0.bottom" timestamp="1606829800762">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.0.bottom/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1637" height="215" key="GridCell.Tab.0.bottom/0.0.1680.1010/-1680.0.1680.1010@-1680.0.1680.1010" timestamp="1606468366725" />
-    <state width="1637" height="319" key="GridCell.Tab.0.bottom/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800762" />
-    <state width="1637" height="319" key="GridCell.Tab.0.center" timestamp="1606829800762">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.0.center/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545164" />
-    <state width="1637" height="215" key="GridCell.Tab.0.center/0.0.1680.1010/-1680.0.1680.1010@-1680.0.1680.1010" timestamp="1606468366725" />
-    <state width="1637" height="319" key="GridCell.Tab.0.center/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800762" />
-    <state width="1637" height="319" key="GridCell.Tab.0.left" timestamp="1606829800762">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.0.left/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545164" />
-    <state width="1637" height="215" key="GridCell.Tab.0.left/0.0.1680.1010/-1680.0.1680.1010@-1680.0.1680.1010" timestamp="1606468366725" />
-    <state width="1637" height="319" key="GridCell.Tab.0.left/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800762" />
-    <state width="1637" height="319" key="GridCell.Tab.0.right" timestamp="1606829800762">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.0.right/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1637" height="215" key="GridCell.Tab.0.right/0.0.1680.1010/-1680.0.1680.1010@-1680.0.1680.1010" timestamp="1606468366725" />
-    <state width="1637" height="319" key="GridCell.Tab.0.right/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800762" />
-    <state width="1323" height="200" key="GridCell.Tab.1.bottom" timestamp="1606829800756">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.1.bottom/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1323" height="200" key="GridCell.Tab.1.bottom/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800756" />
-    <state width="1323" height="200" key="GridCell.Tab.1.center" timestamp="1606829800756">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.1.center/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1323" height="200" key="GridCell.Tab.1.center/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800756" />
-    <state width="1323" height="200" key="GridCell.Tab.1.left" timestamp="1606829800756">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.1.left/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1323" height="200" key="GridCell.Tab.1.left/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800756" />
-    <state width="1323" height="200" key="GridCell.Tab.1.right" timestamp="1606829800756">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state width="1323" height="200" key="GridCell.Tab.1.right/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606788545165" />
-    <state width="1323" height="200" key="GridCell.Tab.1.right/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606829800756" />
-    <state x="277" y="18" key="SettingsEditor" timestamp="1606356306925">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="277" y="18" key="SettingsEditor/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606356306925" />
-    <state x="341" y="150" key="SettingsEditor/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1605876714497" />
-    <state width="691" height="372" key="XDebugger.FullValuePopup" timestamp="1606320938094">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state width="691" height="372" key="XDebugger.FullValuePopup/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1606320938094" />
-    <state x="392" y="234" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1606308685680">
-      <screen x="0" y="0" width="1680" height="1010" />
-    </state>
-    <state x="392" y="234" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606308685680" />
-    <state x="326" y="148" width="672" height="489" key="search.everywhere.popup" timestamp="1607614359255">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="326" y="148" width="672" height="489" key="search.everywhere.popup/0.0.1366.728/-1680.0.1680.1010@0.0.1366.728" timestamp="1607614359255" />
-    <state x="-1177" y="217" width="672" height="678" key="search.everywhere.popup/0.0.1680.1010/-1680.0.1680.1010@-1680.0.1680.1010" timestamp="1606207236101" />
-    <state x="401" y="205" width="827" height="679" key="search.everywhere.popup/0.0.1680.1010/-1680.0.1680.1010@0.0.1680.1010" timestamp="1606650640592" />
-  </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$USER_HOME$/go/pkg/mod/gopkg.in/urfave/cli.v1@v1.20.0/help.go</url>
+          <line>209</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$USER_HOME$/go/pkg/mod/gopkg.in/urfave/cli.v1@v1.20.0/app.go</url>
+          <line>223</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <watches-manager>
       <configuration name="GoApplicationRunConfiguration">
         <watch expression="*(*&quot;github.com/ethereum/go-ethereum/common.Hash&quot;)(824634483392)" />

@@ -2,7 +2,7 @@ package service
 
 import (
 	msg_pb "benzene/api/proto/message"
-	"benzene/internal/utils"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -52,7 +52,7 @@ type Action struct {
 	Params      map[string]interface{}
 }
 
-// TODO: change Interface into Service (hongzicong)
+// TODO: rename Interface to Service (hongzicong)
 // Interface is the collection of functions any service needs to implement.
 type Interface interface {
 	StartService()
@@ -77,17 +77,18 @@ func (m *Manager) GetServices() map[Type]Interface {
 
 // Register registers new service to service store.
 func (m *Manager) Register(t Type, service Interface) {
-	utils.Logger().Info().Int("service", int(t)).Msg("Register Service")
+	log.Info("Register Service", "service", int(t))
 	if m.services == nil {
 		m.services = make(map[Type]Interface)
 	}
 	if _, ok := m.services[t]; ok {
-		utils.Logger().Error().Int("servie", int(t)).Msg("This service is already included")
+		log.Error("This service is already included", "servie", int(t))
 		return
 	}
 	m.services[t] = service
 }
 
+// TODO: figure out why do not use this function & actionChannel (hongzicong)
 // SetupServiceManager inits service map and start service manager.
 func (m *Manager) SetupServiceManager() {
 	m.InitServiceMap()
@@ -107,7 +108,7 @@ func (m *Manager) InitServiceMap() {
 // TakeAction is how service manager handles the action.
 func (m *Manager) TakeAction(action *Action) {
 	if m.services == nil {
-		utils.Logger().Error().Msg("Service store is not initialized")
+		log.Error("Service store is not initialized")
 		return
 	}
 	if service, ok := m.services[action.ServiceType]; ok {

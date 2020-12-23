@@ -1,22 +1,21 @@
 package core
 
 import (
-	engine2 "benzene/consensus/engine"
+	consensus_engine "benzene/consensus/engine"
 	"benzene/core/rawdb"
 	"benzene/core/types"
 	"benzene/params"
-	"fmt"
-	"github.com/ethereum/go-ethereum/log"
-	"time"
-
 	crand "crypto/rand"
+	"fmt"
 	"math"
 	"math/big"
 	mrand "math/rand"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 )
@@ -41,14 +40,14 @@ type HeaderChain struct {
 	procInterrupt func() bool
 
 	rand   *mrand.Rand
-	engine engine2.Engine
+	engine consensus_engine.Engine
 }
 
 // NewHeaderChain creates a new HeaderChain structure.
 //  getValidator should return the parent's validator
 //  procInterrupt points to the parent's interrupt semaphore
 //  wg points to the parent's shutdown wait group
-func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine engine2.Engine, procInterrupt func() bool) (*HeaderChain, error) {
+func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine consensus_engine.Engine, procInterrupt func() bool) (*HeaderChain, error) {
 	headerCache, _ := lru.New(headerCacheLimit)
 	//tdCache, _ := lru.New(tdCacheLimit)
 	numberCache, _ := lru.New(numberCacheLimit)
@@ -60,9 +59,9 @@ func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine e
 	}
 
 	hc := &HeaderChain{
-		config:        config,
-		chainDb:       chainDb,
-		headerCache:   headerCache,
+		config:      config,
+		chainDb:     chainDb,
+		headerCache: headerCache,
 		//tdCache:       tdCache,
 		numberCache:   numberCache,
 		procInterrupt: procInterrupt,
@@ -88,7 +87,7 @@ func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine e
 }
 
 // ShardID returns the shard Id of the headerchain.
-func (hc *HeaderChain) ShardID() uint32 {
+func (hc *HeaderChain) ShardID() uint64 {
 	return hc.CurrentHeader().ShardID
 }
 
@@ -421,9 +420,7 @@ func (hc *HeaderChain) CurrentHeader() *types.Header {
 
 // SetCurrentHeader sets the current head header of the canonical chain.
 func (hc *HeaderChain) SetCurrentHeader(head *types.Header) error {
-	if err := rawdb.WriteHeadHeaderHash(hc.chainDb, head.Hash()); err != nil {
-		return err
-	}
+	rawdb.WriteHeadHeaderHash(hc.chainDb, head.Hash())
 
 	hc.currentHeader.Store(head)
 	hc.currentHeaderHash = head.Hash()
@@ -530,7 +527,7 @@ func (hc *HeaderChain) SetGenesis(head *types.Header) {
 func (hc *HeaderChain) Config() *params.ChainConfig { return hc.config }
 
 // Engine retrieves the header chain's consensus engine.
-func (hc *HeaderChain) Engine() engine2.Engine { return hc.engine }
+func (hc *HeaderChain) Engine() consensus_engine.Engine { return hc.engine }
 
 // GetBlock implements consensus.ChainReader, and returns nil for every input as
 // a header chain does not have blocks available for retrieval.

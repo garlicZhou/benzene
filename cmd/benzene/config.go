@@ -1,13 +1,14 @@
 package main
 
 import (
+	"benzene/bnz"
+	"benzene/cmd/utils"
+	"benzene/internal/bnzapi"
 	"benzene/node"
+	"benzene/p2p"
+	"benzene/params"
 	"bufio"
 	"fmt"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
 	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
@@ -18,11 +19,11 @@ import (
 
 var (
 	dumpConfigCommand = cli.Command{
-		Action:      utils.MigrateFlags(dumpConfig),
+		Action:      dumpConfig,
 		Name:        "dumpconfig",
 		Usage:       "Show configuration values",
 		ArgsUsage:   "",
-		Flags:       append(append(nodeFlags, rpcFlags...), whisperFlags...),
+		Flags:       append(nodeFlags, rpcFlags...),
 		Category:    "MISCELLANEOUS COMMANDS",
 		Description: `The dumpconfig command shows configuration values.`,
 	}
@@ -55,7 +56,7 @@ type ethstatsConfig struct {
 }
 
 type gethConfig struct {
-	Eth      eth.Config
+	Bnz      bnz.Config
 	Node     node.Config
 	Ethstats ethstatsConfig
 }
@@ -79,9 +80,9 @@ func defaultNodeConfig() node.Config {
 	cfg := node.DefaultConfig
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(gitCommit, gitDate)
-	cfg.HTTPModules = append(cfg.HTTPModules, "eth")
-	cfg.WSModules = append(cfg.WSModules, "eth")
-	cfg.IPCPath = "geth.ipc"
+	cfg.HTTPModules = append(cfg.HTTPModules, "bnz")
+	cfg.WSModules = append(cfg.WSModules, "bnz")
+	cfg.IPCPath = "benzene.ipc"
 	return cfg
 }
 
@@ -89,7 +90,7 @@ func defaultNodeConfig() node.Config {
 func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	// Load defaults.
 	cfg := gethConfig{
-		Eth:  eth.DefaultConfig,
+		Bnz:  bnz.DefaultConfig,
 		Node: defaultNodeConfig(),
 	}
 
@@ -98,37 +99,35 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		if err := loadConfig(file, &cfg); err != nil {
 			utils.Fatalf("%v", err)
 		}
-
-		if cfg.Shh != (whisperDeprecatedConfig{}) {
-			log.Warn("Deprecated whisper config detected. Whisper has been moved to github.com/ethereum/whisper")
-		}
 	}
 
 	// Apply flags.
 	utils.SetNodeConfig(ctx, &cfg.Node)
-	stack, err := node.New(&cfg.Node)
+
+	selfPeer := p2p.Peer{
+		IP:   cfg.Node.IP,
+		Port: cfg.Node.Port,
+	}
+	myHost, err := p2p.NewHost(&selfPeer, cfg.Node.P2PPriKey)
+	if err != nil {
+		utils.Fatalf("Cannot create P2P network host: %v", err)
+	}
+
+	stack, err := node.New(myHost, &cfg.Node)
 	if err != nil {
 		utils.Fatalf("Failed to create the protocol stack: %v", err)
 	}
-	utils.SetEthConfig(ctx, stack, &cfg.Eth)
-	if ctx.GlobalIsSet(utils.EthStatsURLFlag.Name) {
-		cfg.Ethstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
-	}
-	utils.SetShhConfig(ctx, stack)
+	utils.SetBnzConfig(ctx, stack, &cfg.Bnz)
 
 	return stack, cfg
 }
 
 // makeFullNode loads geth configuration and creates the Ethereum backend.
-func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
+func makeFullNode(ctx *cli.Context) (*node.Node, bnzapi.Backend) {
 	stack, cfg := makeConfigNode(ctx)
 
-	backend := utils.RegisterEthService(stack, &cfg.Eth)
+	backend := utils.RegisterBnzService(stack, &cfg.Bnz)
 
-	// Add the Ethereum Stats daemon if requested.
-	if cfg.Ethstats.URL != "" {
-		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
-	}
 	return stack, backend
 }
 
@@ -137,8 +136,8 @@ func dumpConfig(ctx *cli.Context) error {
 	_, cfg := makeConfigNode(ctx)
 	comment := ""
 
-	if cfg.Eth.Genesis != nil {
-		cfg.Eth.Genesis = nil
+	if cfg.Bnz.Genesis != nil {
+		cfg.Bnz.Genesis = nil
 		comment += "# Note: this config doesn't contain the genesis block.\n\n"
 	}
 

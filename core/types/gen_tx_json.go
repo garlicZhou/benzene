@@ -17,8 +17,10 @@ var _ = (*txdataMarshaling)(nil)
 func (t txdata) MarshalJSON() ([]byte, error) {
 	type txdata struct {
 		AccountNonce hexutil.Uint64  `json:"nonce"      gencodec:"required"`
-		ShardID      uint32          `json:"shardID"    gencodec:"required"`
-		ToShardID    uint32          `json:"toShardID"  gencodec:"required"`
+		Price        *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+		GasLimit     hexutil.Uint64  `json:"gas"      gencodec:"required"`
+		ShardID      uint64          `json:"shardID"    gencodec:"required"`
+		ToShardID    uint64          `json:"toShardID"  gencodec:"required"`
 		Recipient    *common.Address `json:"to"         rlp:"nil"`
 		Amount       *hexutil.Big    `json:"value"      gencodec:"required"`
 		V            *hexutil.Big    `json:"v" gencodec:"required"`
@@ -28,6 +30,8 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 	}
 	var enc txdata
 	enc.AccountNonce = hexutil.Uint64(t.AccountNonce)
+	enc.Price = (*hexutil.Big)(t.Price)
+	enc.GasLimit = hexutil.Uint64(t.GasLimit)
 	enc.ShardID = t.ShardID
 	enc.ToShardID = t.ToShardID
 	enc.Recipient = t.Recipient
@@ -43,8 +47,10 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 func (t *txdata) UnmarshalJSON(input []byte) error {
 	type txdata struct {
 		AccountNonce *hexutil.Uint64 `json:"nonce"      gencodec:"required"`
-		ShardID      *uint32         `json:"shardID"    gencodec:"required"`
-		ToShardID    *uint32         `json:"toShardID"  gencodec:"required"`
+		Price        *hexutil.Big    `json:"gasPrice" gencodec:"required"`
+		GasLimit     *hexutil.Uint64 `json:"gas"      gencodec:"required"`
+		ShardID      *uint64         `json:"shardID"    gencodec:"required"`
+		ToShardID    *uint64         `json:"toShardID"  gencodec:"required"`
 		Recipient    *common.Address `json:"to"         rlp:"nil"`
 		Amount       *hexutil.Big    `json:"value"      gencodec:"required"`
 		V            *hexutil.Big    `json:"v" gencodec:"required"`
@@ -60,6 +66,14 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'nonce' for txdata")
 	}
 	t.AccountNonce = uint64(*dec.AccountNonce)
+	if dec.Price == nil {
+		return errors.New("missing required field 'gasPrice' for txdata")
+	}
+	t.Price = (*big.Int)(dec.Price)
+	if dec.GasLimit == nil {
+		return errors.New("missing required field 'gas' for txdata")
+	}
+	t.GasLimit = uint64(*dec.GasLimit)
 	if dec.ShardID == nil {
 		return errors.New("missing required field 'shardID' for txdata")
 	}

@@ -2,12 +2,10 @@ package message
 
 import (
 	"context"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
+	"google.golang.org/grpc"
 	"math/big"
 	"net"
-
-	"benzene/internal/utils"
-	"google.golang.org/grpc"
 )
 
 // Constants for client service port.
@@ -36,13 +34,13 @@ func (s *Server) Start() (*grpc.Server, error) {
 	addr := net.JoinHostPort(IP, Port)
 	lis, err := net.Listen("tcp4", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Crit("failed to listen: %v", "err", err)
 	}
 	s.server = grpc.NewServer()
 	RegisterClientServiceServer(s.server, s)
 	go func() {
 		if err := s.server.Serve(lis); err != nil {
-			utils.Logger().Warn().Err(err).Msg("server.Serve() failed")
+			log.Warn("server.Serve() failed", "err", err)
 		}
 	}()
 	return s.server, nil

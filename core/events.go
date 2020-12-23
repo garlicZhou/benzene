@@ -11,16 +11,17 @@ type NewTxsEvent struct{ Txs []*types.Transaction }
 // NewMinedBlockEvent is posted when a block has been imported.
 type NewMinedBlockEvent struct{ Block *types.Block }
 
-// ChainEvent is the struct of chain event.
+// RemovedLogsEvent is posted when a reorg happens
+type RemovedLogsEvent struct{ Logs []*types.Log }
+
 type ChainEvent struct {
 	Block *types.Block
 	Hash  common.Hash
+	Logs  []*types.Log
 }
 
-// ChainSideEvent is chain side event.
 type ChainSideEvent struct {
 	Block *types.Block
 }
 
-// ChainHeadEvent is the struct of chain head event.
 type ChainHeadEvent struct{ Block *types.Block }

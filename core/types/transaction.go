@@ -34,8 +34,8 @@ type txdata struct {
 	AccountNonce uint64          `json:"nonce"      gencodec:"required"`
 	Price        *big.Int        `json:"gasPrice" gencodec:"required"`
 	GasLimit     uint64          `json:"gas"      gencodec:"required"`
-	ShardID      uint32          `json:"shardID"    gencodec:"required"`
-	ToShardID    uint32          `json:"toShardID"  gencodec:"required"`
+	ShardID      uint64          `json:"shardID"    gencodec:"required"`
+	ToShardID    uint64          `json:"toShardID"  gencodec:"required"`
 	Recipient    *common.Address `json:"to"         rlp:"nil"` // nil means contract creation
 	Amount       *big.Int        `json:"value"      gencodec:"required"`
 
@@ -91,12 +91,12 @@ func (tx *Transaction) ChainID() *big.Int {
 }
 
 // ShardID returns which shard id this transaction was signed for (if at all)
-func (tx *Transaction) ShardID() uint32 {
+func (tx *Transaction) ShardID() uint64 {
 	return tx.data.ShardID
 }
 
 // ToShardID returns the destination shard id this transaction is going to
-func (tx *Transaction) ToShardID() uint32 {
+func (tx *Transaction) ToShardID() uint64 {
 	return tx.data.ToShardID
 }
 
@@ -209,7 +209,6 @@ func (tx *Transaction) Size() common.StorageSize {
 	tx.size.Store(common.StorageSize(c))
 	return common.StorageSize(c)
 }
-
 
 // WithSignature returns a new transaction with the given signature.
 // This signature needs to be in the [R || S || V] format where V is 0 or 1.
