@@ -163,6 +163,7 @@ func New(
 	node := Node{
 		config:        conf,
 		inprocHandler: rpc.NewServer(),
+		eventmux:      new(event.TypeMux),
 		log:           conf.Logger,
 		stop:          make(chan struct{}),
 		databases:     make(map[*closeTrackingDB]struct{}),

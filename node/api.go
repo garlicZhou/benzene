@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-//// ListPeer return list of peers for a certain topic
-//func (node *Node) ListPeer(topic string) []peer.ID {
-//	return node.host.ListPeer(topic)
-//}
-//
-//// ListTopic return list of topics the node subscribed
-//func (node *Node) ListTopic() []string {
-//	return node.host.ListTopic()
-//}
-
 // apis returns the collection of built-in RPC APIs.
 func (n *Node) apis() []rpc.API {
 	return []rpc.API{
@@ -149,4 +139,3 @@ func (api *privateAdminAPI) StopWS() (bool, error) {
 	api.node.ws.stop()
 	return true, nil
 }
-

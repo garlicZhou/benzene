@@ -50,6 +50,11 @@ type Backend interface {
 
 func GetAPIs(apiBackend Backend) []rpc.API {
 	return []rpc.API{
-
+		{
+			Namespace: "bnz",
+			Version:   "1.0",
+			Service:   NewPublicBlockChainAPI(apiBackend),
+			Public:    true,
+		},
 	}
 }

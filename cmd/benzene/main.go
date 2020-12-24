@@ -39,13 +39,9 @@ var (
 		utils.P2PKeyFileFlag,
 	}
 
-	rpcFlags = []cli.Flag{
+	rpcFlags = []cli.Flag{}
 
-	}
-
-	metricsFlags = []cli.Flag{
-
-	}
+	metricsFlags = []cli.Flag{}
 )
 
 func init() {
@@ -110,4 +106,6 @@ func benzene(ctx *cli.Context) error {
 func startNode(ctx *cli.Context, stack *node.Node, backend bnzapi.Backend) {
 	debug.Memsize.Add("node", stack)
 
+	// Start up the node itself
+	utils.StartNode(stack)
 }
