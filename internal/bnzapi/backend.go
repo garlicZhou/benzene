@@ -15,9 +15,10 @@ import (
 // Backend interface provides the common API services (that are provided by
 // both full and light clients) with access to necessary functions.
 type Backend interface {
-	// General Ethereum API
+	// General Benzene API
 	ChainDb(shardid uint64) ethdb.Database
 	ExtRPCEnabled() bool
+	ShardID() []uint64
 
 	// Blockchain API
 	SetHead(shardid uint64, number uint64)
@@ -36,7 +37,7 @@ type Backend interface {
 	SubscribeChainSideEvent(shardid uint64, ch chan<- core.ChainSideEvent) event.Subscription
 
 	// Transaction pool API
-	SendTx(ctx context.Context, shardid uint64, signedTx *types.Transaction) error
+	SendTx(ctx context.Context, signedTx *types.Transaction) error
 	GetTransaction(ctx context.Context, shardid uint64, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error)
 	GetPoolTransactions(shardid uint64) (types.Transactions, error)
 	GetPoolTransaction(shardid uint64, txHash common.Hash) *types.Transaction
@@ -49,11 +50,17 @@ type Backend interface {
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {
+	nonceLock := new(AddrLocker)
 	return []rpc.API{
 		{
 			Namespace: "bnz",
 			Version:   "1.0",
 			Service:   NewPublicBlockChainAPI(apiBackend),
+			Public:    true,
+		}, {
+			Namespace: "bnz",
+			Version:   "1.0",
+			Service:   NewPublicTransactionPoolAPI(apiBackend, nonceLock),
 			Public:    true,
 		},
 	}

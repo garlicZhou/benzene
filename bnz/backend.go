@@ -1,18 +1,29 @@
 package bnz
 
 import (
+	proto_node "benzene/api/proto/node"
 	consensus_engine "benzene/consensus/engine"
 	"benzene/core"
 	"benzene/core/types"
 	"benzene/internal/bnzapi"
 	"benzene/internal/chain"
+	"benzene/internal/configs"
 	"benzene/node"
+	"benzene/p2p"
 	"benzene/params"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
+)
+
+const (
+	// NumTryBroadCast is the number of times trying to broadcast
+	NumTryBroadCast = 3
+	// MsgChanBuffer is the buffer of consensus message handlers.
+	MsgChanBuffer = 1024
 )
 
 // Benzene implements the Benzene full node service.
@@ -33,6 +44,8 @@ type Benzene struct {
 	shardChains core.Collection // Shard databases
 
 	APIBackend *BnzAPIBackend
+
+	selfHost p2p.Host
 }
 
 // New creates a new Benzene object (including the
@@ -54,6 +67,7 @@ func New(stack *node.Node, config *Config) (*Benzene, error) {
 		txPool:   make(map[uint64]*core.TxPool),
 		chainDbs: make(map[uint64]ethdb.Database),
 		eventMux: stack.EventMux(),
+		selfHost: stack.SelfHost,
 	}
 
 	var err error
@@ -113,9 +127,7 @@ func (bnz *Benzene) APIs() []rpc.API {
 	apis := bnzapi.GetAPIs(bnz.APIBackend)
 
 	// TODO: provide more apis (hongzicong)
-	return append(apis, []rpc.API{
-
-	}...)
+	return append(apis, []rpc.API{}...)
 }
 
 // isLocalBlock checks whether the specified block is mined
@@ -162,4 +174,69 @@ func (bnz *Benzene) Stop() error {
 	bnz.shardChains.Close()
 	bnz.eventMux.Stop()
 	return nil
+}
+
+// AddPendingTransaction adds one new transaction to the pending transaction list.
+// This is only called from SDK.
+func (bnz *Benzene) AddPendingTransaction(newTx *types.Transaction) error {
+	for _, shardid := range bnz.config.ShardID {
+		if newTx.ShardID() == shardid {
+			errs := bnz.addPendingTransactions(types.Transactions{newTx})
+			var err error
+			for i := range errs {
+				if errs[i] != nil {
+					log.Info("[AddPendingTransaction] Failed adding new transaction", "err", errs[i])
+					err = errs[i]
+					break
+				}
+			}
+			if err == nil {
+				log.Info("Broadcasting Tx", "Hash", newTx.Hash().Hex())
+				bnz.tryBroadcast(newTx)
+			}
+			return err
+		}
+	}
+	return errors.New("shard do not match")
+}
+
+// Add new transactions to the pending transaction list.
+func (bnz *Benzene) addPendingTransactions(newTxs types.Transactions) []error {
+	poolTxs := make(map[uint64]types.Transactions)
+	errs := []error{}
+	for _, tx := range newTxs {
+		// TODO: change this validation rule according to the cross-shard mechanism (hongzicong)
+		if tx.ShardID() != tx.ToShardID() {
+			errs = append(errs, errors.New("cross-shard tx not accepted yet"))
+			continue
+		}
+		poolTxs[tx.ShardID()] = append(poolTxs[tx.ShardID()], tx)
+	}
+	for _, shardid := range bnz.config.ShardID {
+		errs = append(errs, bnz.TxPool(shardid).AddLocals(poolTxs[shardid])...)
+		pendingCount, queueCount := bnz.TxPool(shardid).Stats()
+		log.Info("[addPendingTransactions] Adding more transactions",
+			"err", errs,
+			"length of newTxs", len(newTxs),
+			"totalPending", pendingCount,
+			"totalQueued", queueCount)
+	}
+	return errs
+}
+
+// TODO: make this batch more transactions
+// Broadcast the transaction to nodes with the topic shardGroupID
+func (bnz *Benzene) tryBroadcast(tx *types.Transaction) {
+	msg := proto_node.ConstructTransactionListMessageAccount(types.Transactions{tx})
+
+	shardGroupID := configs.NewGroupIDByShardID(tx.ShardID())
+	log.Info("tryBroadcast", "shardGroupID", string(shardGroupID))
+
+	for attempt := 0; attempt < NumTryBroadCast; attempt++ {
+		if err := bnz.selfHost.SendMessageToGroups([]configs.GroupID{shardGroupID}, p2p.ConstructMessage(msg)); err != nil {
+			log.Error("Error when trying to broadcast tx", "attempt", attempt)
+		} else {
+			break
+		}
+	}
 }

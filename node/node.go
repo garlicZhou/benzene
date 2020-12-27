@@ -1,23 +1,37 @@
 package node
 
 import (
+	"benzene/api/proto"
+	msg_pb "benzene/api/proto/message"
+	proto_node "benzene/api/proto/node"
 	"benzene/api/service"
+	"benzene/consensus"
+	"benzene/core"
+	"benzene/core/types"
+	"benzene/crypto/bls"
 	"benzene/internal/configs"
 	"benzene/p2p"
+	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+	protobuf "github.com/golang/protobuf/proto"
+	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/tsdb/fileutil"
+	"golang.org/x/sync/semaphore"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -30,12 +44,25 @@ const (
 const (
 	maxBroadcastNodes       = 10              // broadcast at most maxBroadcastNodes peers that need in sync
 	broadcastTimeout  int64 = 60 * 1000000000 // 1 mins
+	//SyncIDLength is the length of bytes for syncID
+	SyncIDLength = 20
+)
+
+type withError struct {
+	err     error
+	payload interface{}
+}
+
+var (
+	errMsgHadNoHMYPayLoadAssumption      = errors.New("did not have sufficient size for bnz msg")
+	errConsensusMessageOnUnexpectedTopic = errors.New("received consensus on wrong topic")
 )
 
 // Node represents a protocol-participating node in the network
 type Node struct {
-	SelfPeer p2p.Peer
-	SelfHost p2p.Host // The p2p host used to send/receive p2p messages
+	Consensus *consensus.Consensus // Consensus object containing all Consensus related data (e.g. committee members, signatures, commits)
+	SelfPeer  p2p.Peer
+	SelfHost  p2p.Host // The p2p host used to send/receive p2p messages
 
 	Neighbors sync.Map // All the neighbor nodes, key is the sha256 of Peer IP/Port, value is the p2p.Peer
 
@@ -67,71 +94,10 @@ const (
 	closedState
 )
 
-//// TODO: make this batch more transactions
-//// Broadcast the transaction to nodes with the topic shardGroupID
-//func (node *Node) tryBroadcast(tx *types.Transaction) {
-//	msg := proto_node.ConstructTransactionListMessageAccount(types.Transactions{tx})
-//
-//	shardGroupID := configs.NewGroupIDByShardID(configs.ShardID(tx.ShardID()))
-//	log.Info("tryBroadcast", "shardGroupID", string(shardGroupID))
-//
-//	for attempt := 0; attempt < NumTryBroadCast; attempt++ {
-//		if err := node.SelfHost.SendMessageToGroups([]configs.GroupID{shardGroupID}, p2p.ConstructMessage(msg)); err != nil {
-//			log.Error("Error when trying to broadcast tx", "attempt", attempt)
-//		} else {
-//			break
-//		}
-//	}
-//}
-//
-//// AddPendingTransaction adds one new transaction to the pending transaction list.
-//// This is only called from SDK.
-//func (node *Node) AddPendingTransaction(newTx *types.Transaction) error {
-//	if newTx.ShardID() == node.config.ShardID {
-//		errs := node.addPendingTransactions(types.Transactions{newTx})
-//		var err error
-//		for i := range errs {
-//			if errs[i] != nil {
-//				log.Info("[AddPendingTransaction] Failed adding new transaction", "err", errs[i])
-//				err = errs[i]
-//				break
-//			}
-//		}
-//		if err == nil {
-//			log.Info("Broadcasting Tx", "Hash", newTx.Hash().Hex())
-//			node.tryBroadcast(newTx)
-//		}
-//		return err
-//	}
-//	return errors.New("shard do not match")
-//}
-//
-//// Add new transactions to the pending transaction list.
-//func (node *Node) addPendingTransactions(newTxs types.Transactions) []error {
-//	poolTxs := types.Transactions{}
-//	errs := []error{}
-//	for _, tx := range newTxs {
-//		// TODO: change this validation rule according to the cross-shard mechanism (hongzicong)
-//		if tx.ShardID() != tx.ToShardID() {
-//			errs = append(errs, errors.New("cross-shard tx not accepted yet"))
-//			continue
-//		}
-//		poolTxs = append(poolTxs, tx)
-//	}
-//	errs = append(errs, node.TxPool.AddRemotes(poolTxs)...)
-//
-//	pendingCount, queueCount := node.TxPool.Stats()
-//	log.Info("[addPendingTransactions] Adding more transactions",
-//		"err", errs,
-//		"length of newTxs", len(newTxs),
-//		"totalPending", pendingCount,
-//		"totalQueued", queueCount)
-//	return errs
-//}
-
 // New creates a new P2P node, ready for protocol registration.
 func New(
 	host p2p.Host,
+	consensusObj *consensus.Consensus,
 	conf *Config,
 ) (*Node, error) {
 	// Copy config and resolve the datadir so future changes to the current
@@ -177,6 +143,10 @@ func New(
 		node.SelfPeer = host.GetSelfPeer()
 	}
 
+	if host != nil && consensusObj != nil {
+		node.Consensus = consensusObj
+	}
+
 	// Configure RPC servers.
 	node.http = newHTTPServer(node.log, conf.HTTPTimeouts)
 	node.ws = newHTTPServer(node.log, rpc.DefaultHTTPTimeouts)
@@ -210,6 +180,14 @@ func (n *Node) Start() error {
 		n.doClose(nil)
 		return err
 	}
+
+	// TODO: check whether the above lock is ok
+	err = n.startMessageHandle()
+	if err != nil {
+		n.doClose(nil)
+		return err
+	}
+
 	// Start all registered lifecycles.
 	var started []Lifecycle
 	for _, lifecycle := range lifecycles {
@@ -224,6 +202,456 @@ func (n *Node) Start() error {
 		n.doClose(nil)
 	}
 	return err
+}
+
+func (n *Node) startMessageHandle() error {
+	// groupID and whether this topic is used for consensus
+	groups := map[configs.GroupID]bool{}
+	for _, tp := range n.config.GroupID {
+		groups[tp] = true
+	}
+	for _, tp := range n.config.ClientID {
+		if _, ok := groups[tp]; !ok {
+			groups[tp] = false
+		}
+	}
+
+	log.Debug("starting with these topics", "topics-ended-up-with", groups, "shard-id", n.config.ShardID)
+
+	type u struct {
+		p2p.NamedTopic
+		consensusBound bool
+	}
+	var allTopics []u
+
+	for key, isCon := range groups {
+		topicHandle, err := n.SelfHost.GetOrJoin(string(key))
+		if err != nil {
+			return err
+		}
+		allTopics = append(
+			allTopics, u{
+				NamedTopic:     p2p.NamedTopic{Name: string(key), Topic: topicHandle},
+				consensusBound: isCon,
+			},
+		)
+	}
+	pubsub := n.SelfHost.PubSub()
+	ownID := n.SelfHost.GetID()
+	errChan := make(chan withError, 100)
+
+	// p2p consensus message handler function
+	type p2pHandlerConsensus func(
+		ctx context.Context,
+		msg *msg_pb.Message,
+		key *bls.SerializedPublicKey,
+	) error
+
+	// other p2p message handler function
+	type p2pHandlerElse func(
+		ctx context.Context,
+		rlpPayload []byte,
+		actionType proto_node.MessageType,
+	) error
+
+	// interface pass to p2p message validator
+	type validated struct {
+		consensusBound bool
+		handleC        p2pHandlerConsensus
+		handleCArg     *msg_pb.Message
+		handleE        p2pHandlerElse
+		handleEArg     []byte
+		senderPubKey   *bls.SerializedPublicKey
+		actionType     proto_node.MessageType
+	}
+
+	for i := range allTopics {
+		sub, err := allTopics[i].Topic.Subscribe()
+		if err != nil {
+			return err
+		}
+
+		topicNamed := allTopics[i].Name
+		isConsensusBound := allTopics[i].consensusBound
+
+		log.Info("enabled topic validation pubsub messages", "topic", topicNamed)
+
+		// register topic validator for each topic
+		if err := pubsub.RegisterTopicValidator(
+			topicNamed,
+			// this is the validation function called to quickly validate every p2p message
+			func(ctx context.Context, peer libp2p_peer.ID, msg *libp2p_pubsub.Message) libp2p_pubsub.ValidationResult {
+				bnzMsg := msg.GetData()
+
+				// validate the size of the p2p message
+				if len(bnzMsg) < p2pMsgPrefixSize {
+					// TODO (lc): block peers sending empty messages
+					return libp2p_pubsub.ValidationReject
+				}
+
+				openBox := bnzMsg[p2pMsgPrefixSize:]
+
+				// validate message category
+				switch proto.MessageCategory(openBox[proto.MessageCategoryBytes-1]) {
+				case proto.Consensus:
+					// received consensus message in non-consensus bound topic
+					if !isConsensusBound {
+						errChan <- withError{
+							errors.WithStack(errConsensusMessageOnUnexpectedTopic), msg,
+						}
+						return libp2p_pubsub.ValidationReject
+					}
+
+					// validate consensus message
+					validMsg, senderPubKey, ignore, err := n.validateShardBoundMessage(
+						context.TODO(), openBox[proto.MessageCategoryBytes:],
+					)
+
+					if err != nil {
+						errChan <- withError{err, msg.GetFrom()}
+						return libp2p_pubsub.ValidationReject
+					}
+
+					// ignore the further processing of the p2p messages as it is not intended for this node
+					if ignore {
+						return libp2p_pubsub.ValidationAccept
+					}
+
+					msg.ValidatorData = validated{
+						consensusBound: true,
+						handleC:        n.Consensus.HandleMessageUpdate,
+						handleCArg:     validMsg,
+						senderPubKey:   senderPubKey,
+					}
+					return libp2p_pubsub.ValidationAccept
+
+				case proto.Node:
+					// node message is almost empty
+					if len(openBox) <= p2pNodeMsgPrefixSize {
+						return libp2p_pubsub.ValidationReject
+					}
+					validMsg, actionType, err := n.validateNodeMessage(
+						context.TODO(), openBox,
+					)
+					if err != nil {
+						switch err {
+						//case errIgnoreBeaconMsg:
+						//	// ignore the further processing of the ignored messages as it is not intended for this node
+						//	// but propogate the messages to other nodes
+						//	return libp2p_pubsub.ValidationAccept
+						default:
+							// TODO (lc): block peers sending error messages
+							errChan <- withError{err, msg.GetFrom()}
+							return libp2p_pubsub.ValidationReject
+						}
+					}
+					msg.ValidatorData = validated{
+						consensusBound: false,
+						handleE:        n.HandleNodeMessage,
+						handleEArg:     validMsg,
+						actionType:     actionType,
+					}
+					return libp2p_pubsub.ValidationAccept
+				default:
+					// ignore garbled messages
+					return libp2p_pubsub.ValidationReject
+				}
+
+				select {
+				case <-ctx.Done():
+					if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+						log.Warn("[context] exceeded validation deadline", "topic", topicNamed)
+					}
+					errChan <- withError{errors.WithStack(ctx.Err()), nil}
+				default:
+					return libp2p_pubsub.ValidationAccept
+				}
+
+				return libp2p_pubsub.ValidationReject
+			},
+			// WithValidatorTimeout is an option that sets a timeout for an (asynchronous) topic validator. By default there is no timeout in asynchronous validators.
+			libp2p_pubsub.WithValidatorTimeout(250*time.Millisecond),
+			// WithValidatorConcurrency set the concurernt validator, default is 1024
+			libp2p_pubsub.WithValidatorConcurrency(p2p.SetAsideForConsensus),
+			// WithValidatorInline is an option that sets the validation disposition to synchronous:
+			// it will be executed inline in validation front-end, without spawning a new goroutine.
+			// This is suitable for simple or cpu-bound validators that do not block.
+			libp2p_pubsub.WithValidatorInline(true),
+		); err != nil {
+			return err
+		}
+
+		semConsensus := semaphore.NewWeighted(p2p.SetAsideForConsensus)
+		msgChanConsensus := make(chan validated, MsgChanBuffer)
+
+		// goroutine to handle consensus messages
+		go func() {
+			for m := range msgChanConsensus {
+				// should not take more than 10 seconds to process one message
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				msg := m
+				go func() {
+					defer cancel()
+
+					if semConsensus.TryAcquire(1) {
+						defer semConsensus.Release(1)
+						if err := msg.handleC(ctx, msg.handleCArg, msg.senderPubKey); err != nil {
+							errChan <- withError{err, msg.senderPubKey}
+						}
+					}
+
+					select {
+					case <-ctx.Done():
+						if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+							log.Warn("[context] exceeded consensus message handler deadline", "topic", topicNamed)
+						}
+						errChan <- withError{errors.WithStack(ctx.Err()), nil}
+					default:
+						return
+					}
+				}()
+			}
+		}()
+
+		semNode := semaphore.NewWeighted(p2p.SetAsideOtherwise)
+		msgChanNode := make(chan validated, MsgChanBuffer)
+
+		// goroutine to handle node messages
+		go func() {
+			for m := range msgChanNode {
+				// should not take more than 10 seconds to process one message
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				msg := m
+				go func() {
+					defer cancel()
+					if semNode.TryAcquire(1) {
+						defer semNode.Release(1)
+
+						if err := msg.handleE(ctx, msg.handleEArg, msg.actionType); err != nil {
+							errChan <- withError{err, nil}
+						}
+					}
+
+					select {
+					case <-ctx.Done():
+						if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+							log.Warn("[context] exceeded node message handler deadline", "topic", topicNamed)
+						}
+						errChan <- withError{errors.WithStack(ctx.Err()), nil}
+					default:
+						return
+					}
+				}()
+			}
+		}()
+
+		go func() {
+
+			for {
+				nextMsg, err := sub.Next(context.Background())
+				if err != nil {
+					errChan <- withError{errors.WithStack(err), nil}
+					continue
+				}
+
+				if nextMsg.GetFrom() == ownID {
+					continue
+				}
+
+				if validatedMessage, ok := nextMsg.ValidatorData.(validated); ok {
+					if validatedMessage.consensusBound {
+						msgChanConsensus <- validatedMessage
+					} else {
+						msgChanNode <- validatedMessage
+					}
+				} else {
+					// continue if ValidatorData is nil
+					if nextMsg.ValidatorData == nil {
+						continue
+					}
+				}
+			}
+		}()
+	}
+
+	for e := range errChan {
+		log.Info("[p2p]: issue while handling incoming p2p message: %v", e.err, "item", e.payload)
+	}
+	// NOTE never gets here
+	return nil
+}
+
+// validateNodeMessage validate node message
+func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
+	[]byte, proto_node.MessageType, error) {
+
+	// length of payload must > p2pNodeMsgPrefixSize
+
+	// reject huge node messages
+	if len(payload) >= types.MaxEncodedPoolTransactionSize {
+		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "invalid_oversized"}).Inc()
+		return nil, 0, core.ErrOversizedData
+	}
+
+	// just ignore payload[0], which is MsgCategoryType (consensus/node)
+	msgType := proto_node.MessageType(payload[proto.MessageCategoryBytes])
+
+	switch msgType {
+	case proto_node.Transaction:
+		// nothing much to validate transaction message unless decode the RLP
+		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "tx"}).Inc()
+	case proto_node.Staking:
+		// nothing much to validate staking message unless decode the RLP
+		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "staking_tx"}).Inc()
+	case proto_node.Block:
+		switch proto_node.BlockMessageType(payload[p2pNodeMsgPrefixSize]) {
+		case proto_node.Sync:
+			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "block_sync"}).Inc()
+			// only non-beacon nodes process the beacon block sync messages
+			if node.Blockchain().ShardID() == shard.BeaconChainShardID {
+				return nil, 0, errIgnoreBeaconMsg
+			}
+		case proto_node.SlashCandidate:
+			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "slash"}).Inc()
+			// only beacon chain node process slash candidate messages
+			if node.NodeConfig.ShardID != shard.BeaconChainShardID {
+				return nil, 0, errIgnoreBeaconMsg
+			}
+		case proto_node.Receipt:
+			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "node_receipt"}).Inc()
+		case proto_node.CrossLink:
+			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "crosslink"}).Inc()
+			// only beacon chain node process crosslink messages
+			if node.NodeConfig.ShardID != shard.BeaconChainShardID ||
+				node.NodeConfig.Role() == nodeconfig.ExplorerNode {
+				return nil, 0, errIgnoreBeaconMsg
+			}
+		default:
+			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "invalid_block_type"}).Inc()
+			return nil, 0, errInvalidNodeMsg
+		}
+	default:
+		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "invalid_node_type"}).Inc()
+		return nil, 0, errInvalidNodeMsg
+	}
+
+	return payload[p2pNodeMsgPrefixSize:], msgType, nil
+}
+
+// validateShardBoundMessage validate consensus message
+// validate shardID
+// validate public key size
+// verify message signature
+func (n *Node) validateShardBoundMessage(
+	ctx context.Context, payload []byte,
+) (*msg_pb.Message, *bls.SerializedPublicKey, bool, error) {
+	var (
+		m msg_pb.Message
+	)
+	if err := protobuf.Unmarshal(payload, &m); err != nil {
+		return nil, nil, true, errors.WithStack(err)
+	}
+
+	// ignore messages not intended for explorer
+	if n.config.Role() == nodeconfig.ExplorerNode {
+		switch m.Type {
+		case
+			msg_pb.MessageType_ANNOUNCE,
+			msg_pb.MessageType_PREPARE,
+			msg_pb.MessageType_COMMIT,
+			msg_pb.MessageType_VIEWCHANGE,
+			msg_pb.MessageType_NEWVIEW:
+			return nil, nil, true, nil
+		}
+	}
+
+	// when node is in ViewChanging mode, it still accepts normal messages into FBFTLog
+	// in order to avoid possible trap forever but drop PREPARE and COMMIT
+	// which are message types specifically for a node acting as leader
+	// so we just ignore those messages
+	if n.Consensus.IsViewChangingMode() {
+		switch m.Type {
+		case msg_pb.MessageType_PREPARE, msg_pb.MessageType_COMMIT:
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "ignored"}).Inc()
+			return nil, nil, true, nil
+		}
+	} else {
+		// ignore viewchange/newview message if the node is not in viewchanging mode
+		switch m.Type {
+		case msg_pb.MessageType_NEWVIEW, msg_pb.MessageType_VIEWCHANGE:
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "ignored"}).Inc()
+			return nil, nil, true, nil
+		}
+	}
+
+	// ignore message not intended for leader, but still forward them to the network
+	if n.Consensus.IsLeader() {
+		switch m.Type {
+		case msg_pb.MessageType_ANNOUNCE, msg_pb.MessageType_PREPARED, msg_pb.MessageType_COMMITTED:
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "ignored"}).Inc()
+			return nil, nil, true, nil
+		}
+	}
+
+	maybeCon, maybeVC := m.GetConsensus(), m.GetViewchange()
+	senderKey := []byte{}
+	senderBitmap := []byte{}
+
+	if maybeCon != nil {
+		if maybeCon.ShardId != n.Consensus.ShardID {
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid_shard"}).Inc()
+			return nil, nil, true, errors.WithStack(errWrongShardID)
+		}
+		senderKey = maybeCon.SenderPubkey
+
+		if len(maybeCon.SenderPubkeyBitmap) > 0 {
+			senderBitmap = maybeCon.SenderPubkeyBitmap
+		}
+	} else if maybeVC != nil {
+		if maybeVC.ShardId != n.Consensus.ShardID {
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid_shard"}).Inc()
+			return nil, nil, true, errors.WithStack(errWrongShardID)
+		}
+		senderKey = maybeVC.SenderPubkey
+	} else {
+		nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid"}).Inc()
+		return nil, nil, true, errors.WithStack(errNoSenderPubKey)
+	}
+
+	// ignore mesage not intended for validator
+	// but still forward them to the network
+	if !n.Consensus.IsLeader() {
+		switch m.Type {
+		case msg_pb.MessageType_PREPARE, msg_pb.MessageType_COMMIT:
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "ignored"}).Inc()
+			return nil, nil, true, nil
+		}
+	}
+
+	serializedKey := bls.SerializedPublicKey{}
+	if len(senderKey) > 0 {
+		if len(senderKey) != bls.PublicKeySizeInBytes {
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid_key_size"}).Inc()
+			return nil, nil, true, errors.WithStack(errNotRightKeySize)
+		}
+
+		copy(serializedKey[:], senderKey)
+		if !n.Consensus.IsValidatorInCommittee(serializedKey) {
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid_committee"}).Inc()
+			return nil, nil, true, errors.WithStack(shard.ErrValidNotInCommittee)
+		}
+	} else {
+		count := n.Consensus.Decider.ParticipantsCount()
+		if (count+7)>>3 != int64(len(senderBitmap)) {
+			nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "invalid_participant_count"}).Inc()
+			return nil, nil, true, errors.WithStack(errWrongSizeOfBitmap)
+		}
+	}
+
+	nodeConsensusMessageCounterVec.With(prometheus.Labels{"type": "valid"}).Inc()
+
+	// serializedKey will be empty for multiSig sender
+	return &m, &serializedKey, false, nil
 }
 
 // Close stops the Node and releases resources acquired in

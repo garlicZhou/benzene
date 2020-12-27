@@ -188,8 +188,8 @@ func (b *BnzAPIBackend) SubscribeLogsEvent(shardid uint64, ch chan<- []*types.Lo
 	return b.bnz.Blockchain(shardid).SubscribeLogsEvent(ch)
 }
 
-func (b *BnzAPIBackend) SendTx(ctx context.Context, shardid uint64, signedTx *types.Transaction) error {
-	return b.bnz.TxPool(shardid).AddLocal(signedTx)
+func (b *BnzAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	return b.bnz.AddPendingTransaction(signedTx)
 }
 
 func (b *BnzAPIBackend) GetPoolTransactions(shardid uint64) (types.Transactions, error) {
@@ -239,6 +239,10 @@ func (b *BnzAPIBackend) ChainDb(shardid uint64) ethdb.Database {
 
 func (b *BnzAPIBackend) ExtRPCEnabled() bool {
 	return b.extRPCEnabled
+}
+
+func (b *BnzAPIBackend) ShardID() []uint64 {
+	return b.bnz.config.ShardID
 }
 
 func (b *BnzAPIBackend) EventMux() *event.TypeMux {

@@ -18,6 +18,7 @@ package node
 
 import (
 	"benzene/internal/configs"
+	"benzene/multibls"
 	"crypto/ecdsa"
 	"fmt"
 	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -84,6 +85,9 @@ type Config struct {
 	// the group ID of the shard
 	GroupID []configs.GroupID
 
+	// the client group ID of the shard
+	ClientID []configs.GroupID
+
 	// ShardID list of this node.
 	ShardID []uint64
 
@@ -92,7 +96,8 @@ type Config struct {
 	IP   string
 
 	// Private key for P2P
-	P2PPriKey p2p_crypto.PrivKey
+	P2PPriKey       p2p_crypto.PrivKey
+	ConsensusPriKey multibls.PrivateKeys
 
 	// Configuration of peer-to-peer networking.
 	P2P p2p.Config

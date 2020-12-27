@@ -1,8 +1,12 @@
 package consensus
 
 import (
+	msg_pb "benzene/api/proto/message"
 	"benzene/core"
+	"benzene/crypto/bls"
+	"benzene/multibls"
 	"benzene/p2p"
+	"context"
 )
 
 // Consensus is the main struct with all states and data related to consensus process.
@@ -12,7 +16,7 @@ type Consensus struct {
 	Blockchain *core.BlockChain
 
 	// Shard Id which this node belongs to
-	ShardID uint64
+	ShardID []uint64
 
 	// The p2p host used to send/receive p2p messages
 	host p2p.Host
@@ -20,7 +24,7 @@ type Consensus struct {
 
 // New create a new Consensus record
 func New(
-	host p2p.Host, shard uint64,
+	host p2p.Host, shard []uint64, multiBLSPriKey multibls.PrivateKeys,
 ) (*Consensus, error) {
 	consensus := Consensus{}
 	consensus.host = host
@@ -28,4 +32,9 @@ func New(
 	consensus.ShardID = shard
 
 	return &consensus, nil
+}
+
+// HandleMessageUpdate will update the consensus state according to received message
+func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb.Message, senderKey *bls.SerializedPublicKey) error {
+	return nil
 }

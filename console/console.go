@@ -17,6 +17,8 @@
 package console
 
 import (
+	"benzene/internal/jsre/deps"
+	"benzene/internal/web3ext"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -159,60 +161,60 @@ func (c *Console) initConsoleObject() {
 	})
 }
 
-//func (c *Console) initWeb3(bridge *bridge) error {
-//	bnJS := string(deps.MustAsset("bignumber.js"))
-//	web3JS := string(deps.MustAsset("web3.js"))
-//	if err := c.jsre.Compile("bignumber.js", bnJS); err != nil {
-//		return fmt.Errorf("bignumber.js: %v", err)
-//	}
-//	if err := c.jsre.Compile("web3.js", web3JS); err != nil {
-//		return fmt.Errorf("web3.js: %v", err)
-//	}
-//	if _, err := c.jsre.Run("var Web3 = require('web3');"); err != nil {
-//		return fmt.Errorf("web3 require: %v", err)
-//	}
-//	var err error
-//	c.jsre.Do(func(vm *goja.Runtime) {
-//		transport := vm.NewObject()
-//		transport.Set("send", jsre.MakeCallback(vm, bridge.Send))
-//		transport.Set("sendAsync", jsre.MakeCallback(vm, bridge.Send))
-//		vm.Set("_consoleWeb3Transport", transport)
-//		_, err = vm.RunString("var web3 = new Web3(_consoleWeb3Transport)")
-//	})
-//	return err
-//}
+func (c *Console) initWeb3(bridge *bridge) error {
+	bnJS := string(deps.MustAsset("bignumber.js"))
+	web3JS := string(deps.MustAsset("web3.js"))
+	if err := c.jsre.Compile("bignumber.js", bnJS); err != nil {
+		return fmt.Errorf("bignumber.js: %v", err)
+	}
+	if err := c.jsre.Compile("web3.js", web3JS); err != nil {
+		return fmt.Errorf("web3.js: %v", err)
+	}
+	if _, err := c.jsre.Run("var Web3 = require('web3');"); err != nil {
+		return fmt.Errorf("web3 require: %v", err)
+	}
+	var err error
+	c.jsre.Do(func(vm *goja.Runtime) {
+		transport := vm.NewObject()
+		transport.Set("send", jsre.MakeCallback(vm, bridge.Send))
+		transport.Set("sendAsync", jsre.MakeCallback(vm, bridge.Send))
+		vm.Set("_consoleWeb3Transport", transport)
+		_, err = vm.RunString("var web3 = new Web3(_consoleWeb3Transport)")
+	})
+	return err
+}
 
 // initExtensions loads and registers web3.js extensions.
-//func (c *Console) initExtensions() error {
-//	// Compute aliases from server-provided modules.
-//	apis, err := c.client.SupportedModules()
-//	if err != nil {
-//		return fmt.Errorf("api modules: %v", err)
-//	}
-//	aliases := map[string]struct{}{"eth": {}, "personal": {}}
-//	for api := range apis {
-//		if api == "web3" {
-//			continue
-//		}
-//		aliases[api] = struct{}{}
-//		if file, ok := web3ext.Modules[api]; ok {
-//			if err = c.jsre.Compile(api+".js", file); err != nil {
-//				return fmt.Errorf("%s.js: %v", api, err)
-//			}
-//		}
-//	}
-//
-//	// Apply aliases.
-//	c.jsre.Do(func(vm *goja.Runtime) {
-//		web3 := getObject(vm, "web3")
-//		for name := range aliases {
-//			if v := web3.Get(name); v != nil {
-//				vm.Set(name, v)
-//			}
-//		}
-//	})
-//	return nil
-//}
+func (c *Console) initExtensions() error {
+	// Compute aliases from server-provided modules.
+	apis, err := c.client.SupportedModules()
+	if err != nil {
+		return fmt.Errorf("api modules: %v", err)
+	}
+	aliases := map[string]struct{}{"eth": {}, "personal": {}}
+	for api := range apis {
+		if api == "web3" {
+			continue
+		}
+		aliases[api] = struct{}{}
+		if file, ok := web3ext.Modules[api]; ok {
+			if err = c.jsre.Compile(api+".js", file); err != nil {
+				return fmt.Errorf("%s.js: %v", api, err)
+			}
+		}
+	}
+
+	// Apply aliases.
+	c.jsre.Do(func(vm *goja.Runtime) {
+		web3 := getObject(vm, "web3")
+		for name := range aliases {
+			if v := web3.Get(name); v != nil {
+				vm.Set(name, v)
+			}
+		}
+	})
+	return nil
+}
 
 // initAdmin creates additional admin APIs implemented by the bridge.
 func (c *Console) initAdmin(vm *goja.Runtime, bridge *bridge) {

@@ -39,7 +39,21 @@ var (
 		utils.P2PKeyFileFlag,
 	}
 
-	rpcFlags = []cli.Flag{}
+	rpcFlags = []cli.Flag{
+		utils.IPCDisabledFlag,
+		utils.IPCPathFlag,
+		utils.HTTPEnabledFlag,
+		utils.HTTPListenAddrFlag,
+		utils.HTTPPortFlag,
+		utils.HTTPApiFlag,
+		utils.HTTPCORSDomainFlag,
+		utils.HTTPVirtualHostsFlag,
+		utils.WSEnabledFlag,
+		utils.WSListenAddrFlag,
+		utils.WSPortFlag,
+		utils.WSApiFlag,
+		utils.WSAllowedOriginsFlag,
+	}
 
 	metricsFlags = []cli.Flag{}
 )
