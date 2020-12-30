@@ -276,7 +276,7 @@ func setDataDir(ctx *cli.Context, cfg *node.Config) {
 	}
 }
 
-func SetP2PConfig(ctx *cli.Context, cfg *bnz.Config) {
+func SetP2PConfig(ctx *cli.Context, cfg *node.Config) {
 	var err error
 	cfg.Port = ctx.GlobalString(P2PPortFlag.Name)
 	cfg.IP = ctx.GlobalString(P2PIPFlag.Name)
@@ -317,6 +317,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	setHTTP(ctx, cfg)
 	setWS(ctx, cfg)
 	setDataDir(ctx, cfg)
+	SetP2PConfig(ctx, cfg)
 }
 
 // CheckExclusive verifies that only a single instance of the provided flags was
@@ -362,7 +363,6 @@ func CheckExclusive(ctx *cli.Context, args ...interface{}) {
 
 // SetEthConfig applies eth-related command line flags to the config.
 func SetBnzConfig(ctx *cli.Context, stack *node.Node, cfg *bnz.Config) {
-	SetP2PConfig(ctx, cfg)
 	SetShardConfig(ctx, cfg)
 }
 

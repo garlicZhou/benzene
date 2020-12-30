@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/nat"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -46,11 +44,6 @@ var DefaultConfig = Config{
 	WSPort:              DefaultWSPort,
 	WSModules:           []string{},
 	GraphQLVirtualHosts: []string{"localhost"},
-	P2P: p2p.Config{
-		ListenAddr: ":30303",
-		MaxPeers:   50,
-		NAT:        nat.Any(),
-	},
 }
 
 // DefaultDataDir is the default data directory to use for the databases and other

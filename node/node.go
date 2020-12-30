@@ -17,7 +17,7 @@
 package node
 
 import (
-	"benzene/accounts"
+	"benzene/p2p"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -38,9 +38,7 @@ import (
 type Node struct {
 	eventmux      *event.TypeMux
 	config        *Config
-	accman        *accounts.Manager
 	log           log.Logger
-	ephemKeystore string            // if non-empty, the key directory that will be removed by Stop
 	dirLock       fileutil.Releaser // prevents concurrent use of instance directory
 	stop          chan struct{}     // Channel to wait for termination notifications
 	startStopLock sync.Mutex        // Start/Stop are protected by an additional lock
@@ -55,6 +53,10 @@ type Node struct {
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
 
 	databases map[*closeTrackingDB]struct{} // All open databases
+
+	// The p2p host used to send/receive p2p messages
+	SelfPeer p2p.Peer
+	SelfHost p2p.Host
 }
 
 const (
@@ -64,7 +66,7 @@ const (
 )
 
 // New creates a new P2P node, ready for protocol registration.
-func New(conf *Config) (*Node, error) {
+func New(host p2p.Host, conf *Config) (*Node, error) {
 	// Copy config and resolve the datadir so future changes to the current
 	// working directory don't affect the node.
 	confCopy := *conf
@@ -98,6 +100,11 @@ func New(conf *Config) (*Node, error) {
 		log:           conf.Logger,
 		stop:          make(chan struct{}),
 		databases:     make(map[*closeTrackingDB]struct{}),
+	}
+
+	if host != nil {
+		node.SelfHost = host
+		node.SelfPeer = host.GetSelfPeer()
 	}
 
 	// Register built-in APIs.
@@ -187,15 +194,6 @@ func (n *Node) doClose(errs []error) error {
 	n.state = closedState
 	errs = append(errs, n.closeDatabases()...)
 	n.lock.Unlock()
-
-	if err := n.accman.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if n.ephemKeystore != "" {
-		if err := os.RemoveAll(n.ephemKeystore); err != nil {
-			errs = append(errs, err)
-		}
-	}
 
 	// Release instance directory lock.
 	n.closeDataDir()
@@ -441,11 +439,6 @@ func (n *Node) DataDir() string {
 // InstanceDir retrieves the instance directory used by the protocol stack.
 func (n *Node) InstanceDir() string {
 	return n.config.instanceDir()
-}
-
-// AccountManager retrieves the account manager used by the protocol stack.
-func (n *Node) AccountManager() *accounts.Manager {
-	return n.accman
 }
 
 // IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
