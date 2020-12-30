@@ -18,6 +18,9 @@ package bnz
 
 import (
 	"benzene/core"
+	"benzene/internal/configs"
+	"benzene/multibls"
+	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 
 	"os"
 	"os/user"
@@ -36,6 +39,7 @@ var DefaultConfig = Config{
 	TrieTimeout:             60 * time.Minute,
 	SnapshotCache:           102,
 	TxPool:                  core.DefaultTxPoolConfig,
+	ShardID:                 []uint64{1},
 }
 
 func init() {
@@ -79,5 +83,20 @@ type Config struct {
 	// Transaction pool options
 	TxPool core.TxPoolConfig
 
+	// the group ID of this node
+	GroupID []configs.GroupID
+
+	// the client group ID of this node
+	ClientID []configs.GroupID
+
+	// ShardID list of this node.
 	ShardID []uint64
+
+	// Port and IP of the node.
+	Port string
+	IP   string
+
+	// Private key for P2P
+	P2PPriKey       p2p_crypto.PrivKey
+	ConsensusPriKey multibls.PrivateKeys
 }

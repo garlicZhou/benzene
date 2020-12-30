@@ -15,9 +15,6 @@ type MessageType byte
 const (
 	Transaction MessageType = iota
 	Block
-	Client
-	_          // used to be Control
-	PING       // node send ip/pki to register with leader
 )
 
 // TransactionMessageType represents the types of messages used for Node/Transaction
@@ -26,7 +23,6 @@ type TransactionMessageType int
 // Constant of transaction message subtype
 const (
 	Send TransactionMessageType = iota
-	Unlock
 )
 
 // BlockMessageType represents the type of messages used for Node/Block
@@ -34,23 +30,18 @@ type BlockMessageType int
 
 // Block sync message subtype
 const (
-	Sync           BlockMessageType = iota
-	CrossLink                       // used for crosslink from beacon chain to shard chain
-	Receipt                         // cross-shard transaction receipts
-	SlashCandidate                  // A report of a double-signing event
+	Sync BlockMessageType = iota
 )
 
 var (
 	// B suffix means Byte
-	nodeB      = byte(proto.Node)
-	blockB     = byte(Block)
-	slashB     = byte(SlashCandidate)
-	txnB       = byte(Transaction)
-	sendB      = byte(Send)
-	syncB      = byte(Sync)
+	nodeB  = byte(proto.Node)
+	blockB = byte(Block)
+	txnB   = byte(Transaction)
+	sendB  = byte(Send)
+	syncB  = byte(Sync)
 
 	// H suffix means header
-	slashH           = []byte{nodeB, blockB, slashB}
 	transactionListH = []byte{nodeB, txnB, sendB}
 	syncH            = []byte{nodeB, blockB, syncB}
 )

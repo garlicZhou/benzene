@@ -2,7 +2,7 @@ package proto
 
 import (
 	"bytes"
-	"errors"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -11,13 +11,14 @@ The message structure of any message in Benzene network
 ----  content start -----
 1 byte            - message category
                     0x00: Consensus
-                    0x01: Node...
+                    0x01: Node ...
 1 byte            - message type
                     - for Consensus category
-                      0x00: consensus
-                      0x01: sharding ...
+                      0x00: intra-shard
+                      0x01: cross-shard ...
 				    - for Node category
-                      0x00: transaction ...
+                      0x00: transaction
+                      0x01: block ...
 n - 2 bytes       - actual message payload
 ----   content end  -----
 */
@@ -29,8 +30,6 @@ type MessageCategory byte
 const (
 	Consensus MessageCategory = iota
 	Node
-	Client // deprecated
-	DRand  // not used
 )
 
 const (
@@ -53,7 +52,7 @@ func GetMessageType(message []byte) (byte, error) {
 	if len(message) < MessageCategoryBytes+MessageTypeBytes {
 		return 0, errors.New("failed to get message type: no data available")
 	}
-	return byte(message[MessageCategoryBytes+MessageTypeBytes-1]), nil
+	return message[MessageCategoryBytes+MessageTypeBytes-1], nil
 }
 
 // GetMessagePayload gets the node message payload from the p2p message content

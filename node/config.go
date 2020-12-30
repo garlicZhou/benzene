@@ -17,11 +17,8 @@
 package node
 
 import (
-	"benzene/internal/configs"
-	"benzene/multibls"
 	"crypto/ecdsa"
 	"fmt"
-	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -81,23 +78,6 @@ type Config struct {
 	// databases or flat files. This enables ephemeral nodes which can fully reside
 	// in memory.
 	DataDir string
-
-	// the group ID of the shard
-	GroupID []configs.GroupID
-
-	// the client group ID of the shard
-	ClientID []configs.GroupID
-
-	// ShardID list of this node.
-	ShardID []uint64
-
-	// Port and IP of the node.
-	Port string
-	IP   string
-
-	// Private key for P2P
-	P2PPriKey       p2p_crypto.PrivKey
-	ConsensusPriKey multibls.PrivateKeys
 
 	// Configuration of peer-to-peer networking.
 	P2P p2p.Config

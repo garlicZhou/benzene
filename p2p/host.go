@@ -136,7 +136,10 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 		return nil, err
 	}
 
-	log.Info("libp2p host ready", "self", net.JoinHostPort(self.IP, self.Port), "PeerID", self.PeerID, "PubKey", self.ConsensusPubKey.SerializeToHexStr())
+	log.Info("libp2p host ready",
+		"self", net.JoinHostPort(self.IP, self.Port),
+		"PeerID", self.PeerID,
+		"PubKey", self.ConsensusPubKey.SerializeToHexStr())
 	return h, nil
 }
 

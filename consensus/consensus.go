@@ -15,6 +15,10 @@ type Consensus struct {
 	// The blockchain this consensus is working on
 	Blockchain *core.BlockChain
 
+	// Minimal number of peers in the shard
+	// If the number of validators is less than minPeers, the consensus won't start
+	MinPeers int
+
 	// Shard Id which this node belongs to
 	ShardID []uint64
 
@@ -35,6 +39,6 @@ func New(
 }
 
 // HandleMessageUpdate will update the consensus state according to received message
-func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb.Message, senderKey *bls.SerializedPublicKey) error {
+func (consensus *Consensus) HandleConsensusMessage(ctx context.Context, msg *msg_pb.Message, senderKey *bls.SerializedPublicKey) error {
 	return nil
 }

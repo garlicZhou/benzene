@@ -3,7 +3,6 @@ package main
 import (
 	"benzene/bnz"
 	"benzene/cmd/utils"
-	"benzene/consensus"
 	"benzene/internal/bnzapi"
 	"benzene/node"
 	"benzene/p2p"
@@ -115,14 +114,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		utils.Fatalf("Cannot create P2P network host: %v", err)
 	}
 
-	currentConsensus, err := consensus.New(
-		myHost, cfg.Node.ShardID, cfg.Node.ConsensusPriKey,
-	)
-	if err != nil {
-		utils.Fatalf("Cannot create consensus object: %v", err)
-	}
-
-	stack, err := node.New(myHost, currentConsensus, &cfg.Node)
+	stack, err := node.New(myHost, &cfg.Node)
 	if err != nil {
 		utils.Fatalf("Failed to create the protocol stack: %v", err)
 	}

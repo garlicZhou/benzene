@@ -276,7 +276,7 @@ func setDataDir(ctx *cli.Context, cfg *node.Config) {
 	}
 }
 
-func SetP2PConfig(ctx *cli.Context, cfg *node.Config) {
+func SetP2PConfig(ctx *cli.Context, cfg *bnz.Config) {
 	var err error
 	cfg.Port = ctx.GlobalString(P2PPortFlag.Name)
 	cfg.IP = ctx.GlobalString(P2PIPFlag.Name)
@@ -288,7 +288,7 @@ func SetP2PConfig(ctx *cli.Context, cfg *node.Config) {
 	}
 }
 
-func SetShardConfig(ctx *cli.Context, cfg *node.Config) {
+func SetShardConfig(ctx *cli.Context, cfg *bnz.Config) {
 	shardidlist := ctx.GlobalString(ShardIDFlag.Name)
 	sharidmap := make(map[uint64]bool)
 	for _, entry := range strings.Split(shardidlist, ",") {
@@ -313,12 +313,10 @@ func SetShardConfig(ctx *cli.Context, cfg *node.Config) {
 
 // SetNodeConfig applies node-related command line flags to the config.
 func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
-	SetP2PConfig(ctx, cfg)
 	setIPC(ctx, cfg)
 	setHTTP(ctx, cfg)
 	setWS(ctx, cfg)
 	setDataDir(ctx, cfg)
-	SetShardConfig(ctx, cfg)
 }
 
 // CheckExclusive verifies that only a single instance of the provided flags was
@@ -364,7 +362,8 @@ func CheckExclusive(ctx *cli.Context, args ...interface{}) {
 
 // SetEthConfig applies eth-related command line flags to the config.
 func SetBnzConfig(ctx *cli.Context, stack *node.Node, cfg *bnz.Config) {
-
+	SetP2PConfig(ctx, cfg)
+	SetShardConfig(ctx, cfg)
 }
 
 // RegisterBnzService adds an Benzene client to the stack.
