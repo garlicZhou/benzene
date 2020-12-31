@@ -3,10 +3,10 @@ package consensus
 import (
 	msg_pb "benzene/api/proto/message"
 	"benzene/core"
-	"benzene/crypto/bls"
 	"benzene/multibls"
 	"benzene/p2p"
 	"context"
+	"github.com/harmony-one/harmony/crypto/bls"
 )
 
 // Consensus is the main struct with all states and data related to consensus process.

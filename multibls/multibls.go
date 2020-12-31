@@ -4,8 +4,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"strings"
 
-	"benzene/crypto/bls"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
+	"github.com/harmony-one/harmony/crypto/bls"
 )
 
 // PrivateKeys stores the bls secret keys that belongs to the node
