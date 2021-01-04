@@ -10,7 +10,6 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/harmony-one/bls v0.0.6
 	github.com/harmony-one/harmony v1.9.1-0.20201201235122-2a722bb0243f
-	github.com/harmony-one/mcl v0.0.0-20190605214509-c5ad6d0670b1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-ds-badger v0.2.4
 	github.com/libp2p/go-libp2p v0.12.0
