@@ -3,7 +3,7 @@
 export GO111MODULE=on
 
 declare -A SRC
-SRC[harmony]=./cmd/benzene
+SRC[benzene]=./cmd/benzene
 
 BINDIR=bin
 BUCKET=unique-bucket-bin
@@ -117,14 +117,14 @@ function build_only
             fi
          fi
          if [ "$(uname -s)" == "Linux" ]; then
-            if [ $bin = harmony ]; then
+            if [ $bin = benzene ]; then
                $BINDIR/$bin version || $BINDIR/$bin version
             else
                $BINDIR/$bin --version || $BINDIR/$bin version
             fi
          fi
          if [ "$(uname -s)" == "Darwin" -a "$GOOS" == "darwin" -a -e $BINDIR/$bin ]; then
-            if [ $bin = harmony ]; then
+            if [ $bin = benzene ]; then
                $BINDIR/$bin version || $BINDIR/$bin version
             else
                $BINDIR/$bin --version || $BINDIR/$bin version
