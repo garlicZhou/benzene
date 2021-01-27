@@ -7,26 +7,29 @@ Benzene is a toy blockchain sharding system based on go-ethereum and Harmony.
 On Linux (Ubuntu)
 
 ```shell
-sudo apt install glibc-static gmp-devel gmp-static openssl-libs openssl-static gcc-c++
+sudo apt install libgmp-dev libssl-dev curl git \
+psmisc dnsutils jq make gcc g++ bash tig tree sudo vim \
+silversearcher-ag unzip emacs-nox nano bash-completion -y
 ```
 
 ## Installment
 
-1. Create the appropriate directories:
+1. Clone this repo & dependent repos.
 ```shell
 mkdir -p $(go env GOPATH)/src/github.com/harmony-one
 cd $(go env GOPATH)/src/github.com/harmony-one
-```
-
-If you get 'unknown command' or something along those lines, make sure to install golang first.
-
-2. Clone this repo & dependent repos.
-```shell
 git clone https://github.com/harmony-one/mcl.git
 git clone https://github.com/harmony-one/bls.git
+```
+
+```shell
+mkdir -p $(go env GOPATH)/src/github.com/hongzicong
+cd $(go env GOPATH)/src/github.com/hongzicong
 git clone https://github.com/hongzicong/benzene.git
 cd $(go env GOPATH)/src/github.com/hongzicong/benzene
 ```
+
+If you get 'unknown command' or something along those lines, make sure to install golang first.
 
 3. Run bash `scripts/install_build_tools.sh` to ensure build tools are of correct versions.
 
