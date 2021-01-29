@@ -118,7 +118,7 @@ function build_only
          fi
          if [ "$(uname -s)" == "Linux" ]; then
             if [ $bin = benzene ]; then
-               $BINDIR/$bin version || $BINDIR/$bin version
+               $BINDIR/$bin -version || $BINDIR/$bin -version
             else
                $BINDIR/$bin --version || $BINDIR/$bin version
             fi

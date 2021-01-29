@@ -4,11 +4,13 @@ import (
 	"benzene/bnz"
 	"benzene/cmd/utils"
 	"benzene/internal/bnzapi"
+	"benzene/multibls"
 	"benzene/node"
 	"benzene/p2p"
 	"benzene/params"
 	"bufio"
 	"fmt"
+	"github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/naoina/toml"
 	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
@@ -83,6 +85,7 @@ func defaultNodeConfig() node.Config {
 	cfg.HTTPModules = append(cfg.HTTPModules, "bnz")
 	cfg.WSModules = append(cfg.WSModules, "bnz")
 	cfg.IPCPath = "benzene.ipc"
+	cfg.ConsensusPriKey = multibls.GetPrivateKeys(&bls.SecretKey{})
 	return cfg
 }
 

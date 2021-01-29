@@ -39,7 +39,7 @@ var DefaultConfig = Config{
 	TrieTimeout:             60 * time.Minute,
 	SnapshotCache:           102,
 	TxPool:                  core.DefaultTxPoolConfig,
-	ShardID:                 []uint64{1},
+	ShardID:                 []uint64{},
 }
 
 func init() {
