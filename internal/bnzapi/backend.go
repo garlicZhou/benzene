@@ -1,6 +1,7 @@
 package bnzapi
 
 import (
+	"benzene/accounts"
 	"benzene/core"
 	"benzene/core/types"
 	"benzene/params"
@@ -10,13 +11,16 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
+	"math/big"
 )
 
 // Backend interface provides the common API services (that are provided by
 // both full and light clients) with access to necessary functions.
 type Backend interface {
 	// General Benzene API
+	SuggestPrice(ctx context.Context) (*big.Int, error)
 	ChainDb(shardid uint64) ethdb.Database
+	AccountManager() *accounts.Manager
 	ExtRPCEnabled() bool
 	ShardID() []uint64
 

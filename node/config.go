@@ -17,19 +17,21 @@
 package node
 
 import (
+	"benzene/accounts"
+	"benzene/accounts/keystore"
 	"benzene/multibls"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 const (
@@ -337,6 +339,62 @@ func (c *Config) instanceDir() string {
 		return ""
 	}
 	return filepath.Join(c.DataDir, c.name())
+}
+
+// AccountConfig determines the settings for scrypt and keydirectory
+func (c *Config) AccountConfig() (int, int, string, error) {
+	scryptN := keystore.StandardScryptN
+	scryptP := keystore.StandardScryptP
+	if c.UseLightweightKDF {
+		scryptN = keystore.LightScryptN
+		scryptP = keystore.LightScryptP
+	}
+
+	var (
+		keydir string
+		err    error
+	)
+	switch {
+	case filepath.IsAbs(c.KeyStoreDir):
+		keydir = c.KeyStoreDir
+	case c.DataDir != "":
+		if c.KeyStoreDir == "" {
+			keydir = filepath.Join(c.DataDir, datadirDefaultKeyStore)
+		} else {
+			keydir, err = filepath.Abs(c.KeyStoreDir)
+		}
+	case c.KeyStoreDir != "":
+		keydir, err = filepath.Abs(c.KeyStoreDir)
+	}
+	return scryptN, scryptP, keydir, err
+}
+
+func makeAccountManager(conf *Config) (*accounts.Manager, string, error) {
+	scryptN, scryptP, keydir, err := conf.AccountConfig()
+	var ephemeral string
+	if keydir == "" {
+		// There is no datadir.
+		keydir, err = ioutil.TempDir("", "benzene-keystore")
+		ephemeral = keydir
+	}
+
+	if err != nil {
+		return nil, "", err
+	}
+	if err := os.MkdirAll(keydir, 0700); err != nil {
+		return nil, "", err
+	}
+	// Assemble the account manager and supported backends
+	var backends []accounts.Backend
+	if len(backends) == 0 {
+		// For now, we're using EITHER external signer OR local signers.
+		// If/when we implement some form of lockfile for USB and keystore wallets,
+		// we can have both, but it's very confusing for the user to see the same
+		// accounts in both externally and locally, plus very racey.
+		backends = append(backends, keystore.NewKeyStore(keydir, scryptN, scryptP))
+	}
+
+	return accounts.NewManager(&accounts.Config{InsecureUnlockAllowed: conf.InsecureUnlockAllowed}, backends...), ephemeral, nil
 }
 
 var warnLock sync.Mutex

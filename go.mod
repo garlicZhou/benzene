@@ -3,10 +3,13 @@ module benzene
 go 1.14
 
 require (
+	github.com/cespare/cp v1.1.1
+	github.com/davecgh/go-spew v1.1.1
+	github.com/deckarep/golang-set v1.7.1
 	github.com/dop251/goja v0.0.0-20200721192441-a695b0cdd498
 	github.com/ethereum/go-ethereum v1.9.24
 	github.com/fatih/color v1.9.0
-	github.com/fjl/gencodec v0.0.0-20191126094850-e283372f291f // indirect
+	github.com/fjl/gencodec v0.0.0-20191126094850-e283372f291f
 	github.com/fjl/memsize v0.0.0-20180929194037-2a09253e352a
 	github.com/golang/mock v1.4.0
 	github.com/golang/protobuf v1.4.3
@@ -26,11 +29,14 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
+	github.com/pborman/uuid v1.2.0
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.7.1
+	github.com/rjeczalik/notify v0.9.2
 	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.20.0
+	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect

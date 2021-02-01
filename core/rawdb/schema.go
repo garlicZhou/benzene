@@ -75,6 +75,8 @@ var (
 
 	uncleanShutdownKey = []byte("unclean-shutdown") // config prefix for the db
 
+	shardIDKey = []byte("shardID") // prefix for shard id in db
+
 	preimageCounter    = metrics.NewRegisteredCounter("db/preimage/total", nil)
 	preimageHitCounter = metrics.NewRegisteredCounter("db/preimage/hits", nil)
 )

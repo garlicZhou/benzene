@@ -30,10 +30,16 @@ var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
 type Genesis struct {
-	Config    *params.ChainConfig `json:"config"`
-	ShardID   uint64              `json:"shardID"`
-	Timestamp uint64              `json:"timestamp"`
-	Alloc     GenesisAlloc        `json:"alloc"          gencodec:"required"`
+	Config     *params.ChainConfig `json:"config"`
+	Nonce      uint64              `json:"nonce"`
+	ShardID    uint64              `json:"shardID"`
+	Timestamp  uint64              `json:"timestamp"`
+	ExtraData  []byte              `json:"extraData"`
+	GasLimit   uint64              `json:"gasLimit"   gencodec:"required"`
+	Difficulty *big.Int            `json:"difficulty" gencodec:"required"`
+	Mixhash    common.Hash         `json:"mixHash"`
+	Coinbase   common.Address      `json:"coinbase"`
+	Alloc      GenesisAlloc        `json:"alloc"          gencodec:"required"`
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
@@ -62,6 +68,7 @@ func (ga *GenesisAlloc) UnmarshalJSON(data []byte) error {
 type GenesisAccount struct {
 	Code       []byte                      `json:"code,omitempty"`
 	Storage    map[common.Hash]common.Hash `json:"storage,omitempty"`
+	ShardID    uint64                      `json:"shardID" gencodec:"required"`
 	Balance    *big.Int                    `json:"balance" gencodec:"required"`
 	Nonce      uint64                      `json:"nonce,omitempty"`
 	PrivateKey []byte                      `json:"secretKey,omitempty"` // for tests
@@ -69,9 +76,13 @@ type GenesisAccount struct {
 
 // field type overrides for gencodec
 type genesisSpecMarshaling struct {
+	Nonce      math.HexOrDecimal64
 	Timestamp  math.HexOrDecimal64
+	ExtraData  hexutil.Bytes
+	GasLimit   math.HexOrDecimal64
 	GasUsed    math.HexOrDecimal64
 	Number     math.HexOrDecimal64
+	Difficulty *math.HexOrDecimal256
 	Alloc      map[common.UnprefixedAddress]GenesisAccount
 }
 
@@ -136,7 +147,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 	if (stored == common.Hash{}) {
 		if genesis == nil {
 			log.Info("Writing default main-net genesis block")
-			genesis = DefaultGenesisBlock()
+			genesis = DefaultGenesisBlock(*rawdb.ReadShardID(db))
 		} else {
 			log.Info("Writing custom genesis block")
 		}
@@ -152,7 +163,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 	header := rawdb.ReadHeader(db, stored, 0)
 	if _, err := state.New(header.Root, state.NewDatabaseWithCache(db, 0, ""), nil); err != nil {
 		if genesis == nil {
-			genesis = DefaultGenesisBlock()
+			genesis = DefaultGenesisBlock(*rawdb.ReadShardID(db))
 		}
 		// Ensure the stored genesis matches with the given one.
 		hash := genesis.ToBlock(nil).Hash()
@@ -265,23 +276,30 @@ func (g *Genesis) MustCommit(db ethdb.Database) *types.Block {
 }
 
 // DefaultGenesisBlock returns the Ethereum main net genesis block.
-func DefaultGenesisBlock() *Genesis {
+func DefaultGenesisBlock(shardID uint64) *Genesis {
 	return &Genesis{
 		Config:    params.DefaultChainConfig,
-		Alloc:     make(GenesisAlloc),
-		ShardID:   1,
+		Nonce:     66,
+		Alloc:     decodePrealloc(mainnetAllocData, shardID),
+		ShardID:   shardID,
 		Timestamp: 1561734000, // GMT: Friday, June 28, 2019 3:00:00 PM. PST: Friday, June 28, 2019 8:00:00 AM
 	}
 }
 
-func decodePrealloc(data string) GenesisAlloc {
-	var p []struct{ Addr, Balance *big.Int }
+func decodePrealloc(data string, shardID uint64) GenesisAlloc {
+	var p []struct{
+		Addr, Balance *big.Int
+		ShardID uint64
+	}
 	if err := rlp.NewStream(strings.NewReader(data), 0).Decode(&p); err != nil {
 		panic(err)
 	}
 	ga := make(GenesisAlloc, len(p))
 	for _, account := range p {
-		ga[common.BigToAddress(account.Addr)] = GenesisAccount{Balance: account.Balance}
+		if account.ShardID != shardID {
+			continue
+		}
+		ga[common.BigToAddress(account.Addr)] = GenesisAccount{Balance: account.Balance, ShardID: account.ShardID}
 	}
 	return ga
 }

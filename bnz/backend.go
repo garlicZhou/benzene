@@ -1,6 +1,7 @@
 package bnz
 
 import (
+	"benzene/accounts"
 	"benzene/api/proto"
 	msg_pb "benzene/api/proto/message"
 	proto_node "benzene/api/proto/node"
@@ -72,9 +73,10 @@ type Benzene struct {
 	// DB interfaces
 	chainDbs map[uint64]ethdb.Database // Blockchain database
 
-	eventMux  *event.TypeMux
-	Consensus *consensus.Consensus // Consensus object containing all Consensus related data (e.g. committee members, signatures, commits)
-	engine    consensus_engine.Engine
+	eventMux       *event.TypeMux
+	Consensus      *consensus.Consensus // Consensus object containing all Consensus related data (e.g. committee members, signatures, commits)
+	engine         consensus_engine.Engine
+	accountManager *accounts.Manager
 
 	shardChains core.Collection // Shard databases
 
@@ -109,6 +111,7 @@ func New(stack *node.Node, config *Config) (*Benzene, error) {
 		txPool:         make(map[uint64]*core.TxPool),
 		chainDbs:       make(map[uint64]ethdb.Database),
 		eventMux:       stack.EventMux(),
+		accountManager: stack.AccountManager(),
 		selfHost:       stack.SelfHost,
 		startConsensus: make(chan struct{}),
 	}
@@ -218,6 +221,7 @@ func (bnz *Benzene) Blockchain(shardid uint64) *core.BlockChain {
 	return bc
 }
 
+func (bnz *Benzene) AccountManager() *accounts.Manager     { return bnz.accountManager }
 func (bnz *Benzene) TxPool(shardid uint64) *core.TxPool    { return bnz.txPool[shardid] }
 func (bnz *Benzene) EventMux() *event.TypeMux              { return bnz.eventMux }
 func (bnz *Benzene) Engine() consensus_engine.Engine       { return bnz.engine }

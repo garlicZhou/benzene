@@ -17,6 +17,8 @@
 package node
 
 import (
+	"benzene/accounts"
+	bnzrawdb "benzene/core/rawdb"
 	"benzene/p2p"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -38,7 +40,9 @@ import (
 type Node struct {
 	eventmux      *event.TypeMux
 	config        *Config
+	accman        *accounts.Manager
 	log           log.Logger
+	ephemKeystore string            // if non-empty, the key directory that will be removed by Stop
 	dirLock       fileutil.Releaser // prevents concurrent use of instance directory
 	stop          chan struct{}     // Channel to wait for termination notifications
 	startStopLock sync.Mutex        // Start/Stop are protected by an additional lock
@@ -109,6 +113,19 @@ func New(host p2p.Host, conf *Config) (*Node, error) {
 
 	// Register built-in APIs.
 	node.rpcAPIs = append(node.rpcAPIs, node.apis()...)
+
+	// Acquire the instance directory lock.
+	if err := node.openDataDir(); err != nil {
+		return nil, err
+	}
+	// Ensure that the AccountManager method works before the node has started. We rely on
+	// this in cmd/geth.
+	am, ephemeralKeystore, err := makeAccountManager(conf)
+	if err != nil {
+		return nil, err
+	}
+	node.accman = am
+	node.ephemKeystore = ephemeralKeystore
 
 	// Configure RPC servers.
 	node.http = newHTTPServer(node.log, conf.HTTPTimeouts)
@@ -194,6 +211,15 @@ func (n *Node) doClose(errs []error) error {
 	n.state = closedState
 	errs = append(errs, n.closeDatabases()...)
 	n.lock.Unlock()
+
+	if err := n.accman.Close(); err != nil {
+		errs = append(errs, err)
+	}
+	if n.ephemKeystore != "" {
+		if err := os.RemoveAll(n.ephemKeystore); err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	// Release instance directory lock.
 	n.closeDataDir()
@@ -441,6 +467,11 @@ func (n *Node) InstanceDir() string {
 	return n.config.instanceDir()
 }
 
+// AccountManager retrieves the account manager used by the protocol stack.
+func (n *Node) AccountManager() *accounts.Manager {
+	return n.accman
+}
+
 // IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
 func (n *Node) IPCEndpoint() string {
 	return n.ipc.endpoint
@@ -485,39 +516,7 @@ func (n *Node) OpenDatabase(shardid uint64, name string, cache, handles int, nam
 
 	if err == nil {
 		db = n.wrapDatabase(db)
-	}
-	return db, err
-}
-
-// OpenDatabaseWithFreezer opens an existing database with the given name (or
-// creates one if no previous can be found) from within the node's data directory,
-// also attaching a chain freezer to it that moves ancient chain data from the
-// database to immutable append-only files. If the node is an ephemeral one, a
-// memory database is returned.
-func (n *Node) OpenDatabaseWithFreezer(name string, cache, handles int, freezer, namespace string) (ethdb.Database, error) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	if n.state == closedState {
-		return nil, ErrNodeStopped
-	}
-
-	var db ethdb.Database
-	var err error
-	if n.config.DataDir == "" {
-		db = rawdb.NewMemoryDatabase()
-	} else {
-		root := n.ResolvePath(name)
-		switch {
-		case freezer == "":
-			freezer = filepath.Join(root, "ancient")
-		case !filepath.IsAbs(freezer):
-			freezer = n.ResolvePath(freezer)
-		}
-		db, err = rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
-	}
-
-	if err == nil {
-		db = n.wrapDatabase(db)
+		bnzrawdb.WriteShardID(db, shardid)
 	}
 	return db, err
 }

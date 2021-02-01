@@ -31,7 +31,7 @@ import (
 
 // Constants for block.
 var (
-	EmptyRootHash  = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyRootHash = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 )
 
 // hasherPool holds LegacyKeccak hashers.
@@ -163,6 +163,10 @@ func (b *Block) Transaction(hash common.Hash) *Transaction {
 
 // Number returns header number.
 func (b *Block) Number() *big.Int { return b.header.Number }
+
+func (b *Block) GasLimit() uint64 { return b.header.GasLimit }
+
+func (b *Block) GasUsed() uint64 { return b.header.GasUsed }
 
 // Time is header time.
 func (b *Block) Time() *big.Int { return b.header.Time }

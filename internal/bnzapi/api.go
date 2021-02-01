@@ -1,7 +1,9 @@
 package bnzapi
 
 import (
+	"benzene/accounts"
 	"benzene/core/types"
+	"bytes"
 	"context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -9,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
 	"math/big"
 )
 
@@ -101,6 +104,23 @@ func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, shardid uint64
 		return s.rpcMarshalBlock(ctx, block, true, fullTx)
 	}
 	return nil, err
+}
+
+// CallArgs represents the arguments for a call.
+type CallArgs struct {
+	From      *common.Address `json:"from"`
+	To        *common.Address `json:"to"`
+	ShardID   *hexutil.Uint64 `json:"shardID"`
+	ToShardID *hexutil.Uint64 `json:"toShardID"`
+	Gas       *hexutil.Uint64 `json:"gas"`
+	GasPrice  *hexutil.Big    `json:"gasPrice"`
+	Value     *hexutil.Big    `json:"value"`
+	Data      *hexutil.Bytes  `json:"data"`
+}
+
+func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap uint64) (hexutil.Uint64, error) {
+	// TODO(hongzicong): smart contract support (estimate gas)
+	return 0, nil
 }
 
 // RPCMarshalHeader converts the given header to the RPC output .
@@ -260,6 +280,113 @@ func NewPublicTransactionPoolAPI(b Backend, nonceLock *AddrLocker) *PublicTransa
 	return &PublicTransactionPoolAPI{b, nonceLock}
 }
 
+// GetBlockTransactionCountByNumber returns the number of transactions in the block with the given block number.
+func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByNumber(ctx context.Context, shardid uint64, blockNr rpc.BlockNumber) *hexutil.Uint {
+	if block, _ := s.b.BlockByNumber(ctx, shardid, blockNr); block != nil {
+		n := hexutil.Uint(len(block.Transactions()))
+		return &n
+	}
+	return nil
+}
+
+// GetBlockTransactionCountByHash returns the number of transactions in the block with the given hash.
+func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Context, shardid uint64, blockHash common.Hash) *hexutil.Uint {
+	if block, _ := s.b.BlockByHash(ctx, shardid, blockHash); block != nil {
+		n := hexutil.Uint(len(block.Transactions()))
+		return &n
+	}
+	return nil
+}
+
+// SendTxArgs represents the arguments to sumbit a new transaction into the transaction pool.
+type SendTxArgs struct {
+	From      common.Address  `json:"from"`
+	To        *common.Address `json:"to"`
+	ShardID   *hexutil.Uint64 `json:"shardID"`
+	ToShardID *hexutil.Uint64 `json:"toShardID"`
+	Gas       *hexutil.Uint64 `json:"gas"`
+	GasPrice  *hexutil.Big    `json:"gasPrice"`
+	Value     *hexutil.Big    `json:"value"`
+	Nonce     *hexutil.Uint64 `json:"nonce"`
+	// We accept "data" and "input" for backwards-compatibility reasons. "input" is the
+	// newer name and should be preferred by clients.
+	Data  *hexutil.Bytes `json:"data"`
+	Input *hexutil.Bytes `json:"input"`
+}
+
+// setDefaults is a helper function that fills in default values for unspecified tx fields.
+func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
+	if args.GasPrice == nil {
+		price, err := b.SuggestPrice(ctx)
+		if err != nil {
+			return err
+		}
+		args.GasPrice = (*hexutil.Big)(price)
+	}
+	if args.Value == nil {
+		args.Value = new(hexutil.Big)
+	}
+	if args.Nonce == nil {
+		nonce, err := b.GetPoolNonce(ctx, uint64(*args.ShardID), args.From)
+		if err != nil {
+			return err
+		}
+		args.Nonce = (*hexutil.Uint64)(&nonce)
+	}
+	if args.Data != nil && args.Input != nil && !bytes.Equal(*args.Data, *args.Input) {
+		return errors.New(`both "data" and "input" are set and not equal. Please use "input" to pass transaction call data`)
+	}
+	if args.To == nil {
+		// Contract creation
+		var input []byte
+		if args.Data != nil {
+			input = *args.Data
+		} else if args.Input != nil {
+			input = *args.Input
+		}
+		if len(input) == 0 {
+			return errors.New(`contract creation without any data provided`)
+		}
+	}
+	// Estimate the gas usage if necessary.
+	if args.Gas == nil {
+		// For backwards-compatibility reason, we try both input and data
+		// but input is preferred.
+		input := args.Input
+		if input == nil {
+			input = args.Data
+		}
+		callArgs := CallArgs{
+			From:     &args.From, // From shouldn't be nil
+			To:       args.To,
+			GasPrice: args.GasPrice,
+			Value:    args.Value,
+			Data:     input,
+		}
+		pendingBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
+		estimated, err := DoEstimateGas(ctx, b, callArgs, pendingBlockNr, 0)
+		if err != nil {
+			return err
+		}
+		args.Gas = &estimated
+		log.Trace("Estimate gas usage automatically", "gas", args.Gas)
+	}
+	return nil
+}
+
+func (args *SendTxArgs) toTransaction() *types.Transaction {
+	var input []byte
+	if args.Input != nil {
+		input = *args.Input
+	} else if args.Data != nil {
+		input = *args.Data
+	}
+	if args.To == nil {
+		return types.NewContractCreation(uint64(*args.Nonce), uint64(*args.ShardID), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+	}
+	return types.NewTransaction(uint64(*args.Nonce), *args.To, uint64(*args.ShardID), uint64(*args.ToShardID), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+}
+
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
 	// If the transaction fee cap is already specified, ensure the
@@ -282,6 +409,38 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 		log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
 	}
 	return tx.Hash(), nil
+}
+
+// SendTransaction creates a transaction for the given argument, sign it and submit it to the
+// transaction pool.
+func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args SendTxArgs) (common.Hash, error) {
+	// Look up the wallet containing the requested signer
+	account := accounts.Account{Address: args.From}
+
+	wallet, err := s.b.AccountManager().Find(account)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	if args.Nonce == nil {
+		// Hold the addresse's mutex around signing to prevent concurrent assignment of
+		// the same nonce to multiple accounts.
+		s.nonceLock.LockAddr(args.From)
+		defer s.nonceLock.UnlockAddr(args.From)
+	}
+
+	// Set some sanity defaults and terminate on failure
+	if err := args.setDefaults(ctx, s.b); err != nil {
+		return common.Hash{}, err
+	}
+	// Assemble the transaction and sign with the wallet
+	tx := args.toTransaction()
+
+	signed, err := wallet.SignTx(account, tx, big.NewInt(1))
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return SubmitTransaction(ctx, s.b, signed)
 }
 
 // SendRawTransaction will add the signed transaction to the transaction pool.

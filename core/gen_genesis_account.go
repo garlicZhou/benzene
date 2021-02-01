@@ -19,6 +19,7 @@ func (g GenesisAccount) MarshalJSON() ([]byte, error) {
 	type GenesisAccount struct {
 		Code       hexutil.Bytes               `json:"code,omitempty"`
 		Storage    map[storageJSON]storageJSON `json:"storage,omitempty"`
+		ShardID    uint64                      `json:"shardID" gencodec:"required"`
 		Balance    *math.HexOrDecimal256       `json:"balance" gencodec:"required"`
 		Nonce      math.HexOrDecimal64         `json:"nonce,omitempty"`
 		PrivateKey hexutil.Bytes               `json:"secretKey,omitempty"`
@@ -31,6 +32,7 @@ func (g GenesisAccount) MarshalJSON() ([]byte, error) {
 			enc.Storage[storageJSON(k)] = storageJSON(v)
 		}
 	}
+	enc.ShardID = g.ShardID
 	enc.Balance = (*math.HexOrDecimal256)(g.Balance)
 	enc.Nonce = math.HexOrDecimal64(g.Nonce)
 	enc.PrivateKey = g.PrivateKey
@@ -42,6 +44,7 @@ func (g *GenesisAccount) UnmarshalJSON(input []byte) error {
 	type GenesisAccount struct {
 		Code       *hexutil.Bytes              `json:"code,omitempty"`
 		Storage    map[storageJSON]storageJSON `json:"storage,omitempty"`
+		ShardID    *uint64                     `json:"shardID" gencodec:"required"`
 		Balance    *math.HexOrDecimal256       `json:"balance" gencodec:"required"`
 		Nonce      *math.HexOrDecimal64        `json:"nonce,omitempty"`
 		PrivateKey *hexutil.Bytes              `json:"secretKey,omitempty"`
@@ -59,6 +62,10 @@ func (g *GenesisAccount) UnmarshalJSON(input []byte) error {
 			g.Storage[common.Hash(k)] = common.Hash(v)
 		}
 	}
+	if dec.ShardID == nil {
+		return errors.New("missing required field 'shardID' for GenesisAccount")
+	}
+	g.ShardID = *dec.ShardID
 	if dec.Balance == nil {
 		return errors.New("missing required field 'balance' for GenesisAccount")
 	}

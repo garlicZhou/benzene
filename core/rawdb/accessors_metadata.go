@@ -2,6 +2,7 @@ package rawdb
 
 import (
 	"benzene/params"
+	"encoding/binary"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -34,4 +35,26 @@ func WriteChainConfig(db ethdb.KeyValueWriter, hash common.Hash, cfg *params.Cha
 	if err := db.Put(configKey(hash), data); err != nil {
 		log.Crit("Failed to store chain config", "err", err)
 	}
+}
+
+// WriteShardID writes the shard id to the database
+func WriteShardID(db ethdb.KeyValueWriter, shardID uint64) {
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], shardID)
+	if err := db.Put(shardIDKey, buf[:]); err != nil {
+		log.Crit("Failed to store shard id of the blockchain", "err", err)
+	}
+}
+
+// ReadShardID writes the shard id to the database
+func ReadShardID(db ethdb.KeyValueReader) *uint64 {
+	data, _ := db.Get(shardIDKey)
+	if len(data) == 0 {
+		return nil
+	}
+	if len(data) != 8 {
+		return nil
+	}
+	shardID := binary.BigEndian.Uint64(data)
+	return &shardID
 }

@@ -22,42 +22,34 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/crypto/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/bls/bls.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/bls/mask.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/bls/mask_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/hash/hash.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/hash/rlp.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vdf/vdf.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/LICENSE" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/bls/bls_vrf.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/bls/bls_vrf_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/p256/p256.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/p256/p256_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/p256/unmarshal.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crypto/vrf/vrf.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/jsre/deps/bignumber.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/jsre/deps/bindata.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/jsre/deps/deps.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/internal/jsre/deps/web3.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/multibls/multibls.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/node_handler.go" afterDir="false" />
+    <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="lalala">
+      <change afterPath="$PROJECT_DIR$/cmd/benzene/accountcmd.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/genesis_alloc.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/mkalloc.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/prealloc_account.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/types/bloom9.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/types/receipt.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bnz/api_backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnz/api_backend.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bnz/backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnz/backend.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/benzene/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/utils/flags.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/utils/flags.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/consensus.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/console/console.go" beforeDir="false" afterPath="$PROJECT_DIR$/console/console.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/gen_genesis.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/gen_genesis.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/gen_genesis_account.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/gen_genesis_account.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/genesis.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/genesis.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/rawdb/schema.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/schema.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/block.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/gen_header_json.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/gen_header_json.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/gen_tx_json.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/gen_tx_json.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/header.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/header.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core/types/transaction.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/transaction.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/bnzapi/api.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/api.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/bnzapi/backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/backend.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/defaults.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/defaults.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/host.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/host.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +63,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file://D:/Go" />
+  <component name="GOROOT" url="file://$USER_HOME$/sdk/go1.14.1" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -82,6 +74,7 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="DefaultGoTemplateProperty" value="Go File" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
@@ -90,23 +83,24 @@
     <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.suppress.cgo_cflags.debug.warning" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/core" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
     <property name="node.js.path.for.package.tslint" value="project" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
-    <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
+    <property name="settings.editor.selected.configurable" value="go.vgo" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/core" />
+      <recent name="$PROJECT_DIR$/core/types" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="E:\GolandProjects\benzene" />
       <recent name="E:\GolandProjects\benzene\node" />
-      <recent name="E:\GolandProjects\benzene\internal\jsre" />
-      <recent name="C:\Users\cszhong\Desktop\benzene\internal\bnzapi" />
-      <recent name="E:\GolandProjects\benzene\internal" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="E:\GolandProjects\benzene\core" />
@@ -127,11 +121,35 @@
       <directory value="$PROJECT_DIR$" />
       <method v="2" />
     </configuration>
+    <configuration name="benzene-account" type="GoApplicationRunConfiguration" factoryName="Go Application">
+      <module name="benzene" />
+      <working_directory value="$PROJECT_DIR$" />
+      <go_parameters value="-i" />
+      <parameters value="account list --datadir=./bin" />
+      <envs>
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+      </envs>
+      <kind value="PACKAGE" />
+      <filePath value="$PROJECT_DIR$" />
+      <package value="benzene/cmd/benzene" />
+      <directory value="$PROJECT_DIR$" />
+      <output_directory value="$PROJECT_DIR$/build/bin" />
+      <method v="2" />
+    </configuration>
     <configuration name="benzene-console" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="benzene" />
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
-      <parameters value="console --datadir=E:\GolandProjects\benzene_workspace --p2p.keyfile=E:\GolandProjects\benzene_workspace\.bnzkey -run.shard=1 --http" />
+      <parameters value="console --datadir=./bin --p2p.keyfile=./bin/.bnzkey -run.shard=1 --http" />
+      <envs>
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+      </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
       <package value="benzene/cmd/benzene" />
@@ -144,6 +162,12 @@
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
       <parameters value="help" />
+      <envs>
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+      </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
       <package value="benzene/cmd/benzene" />
@@ -156,6 +180,12 @@
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
       <parameters value="-version" />
+      <envs>
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+      </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
       <package value="benzene/cmd/benzene" />
@@ -167,7 +197,13 @@
       <module name="benzene" />
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
-      <parameters value="--datadir=E:\GolandProjects\benzene_workspace --p2p.keyfile=E:\GolandProjects\benzene_workspace\.bnzkey -run.shard=1 --http" />
+      <parameters value="--datadir=./bin --p2p.keyfile=./bin/.bnzkey -run.shard=1 --http" />
+      <envs>
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+      </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
       <package value="benzene/cmd/benzene" />
@@ -175,10 +211,23 @@
       <output_directory value="$PROJECT_DIR$/build/bin" />
       <method v="2" />
     </configuration>
+    <configuration name="go build mkalloc.go" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+      <module name="benzene" />
+      <working_directory value="$PROJECT_DIR$/core" />
+      <go_parameters value="-i" />
+      <parameters value="./prealloc_account.json" />
+      <kind value="FILE" />
+      <filePath value="$PROJECT_DIR$/core/mkalloc.go" />
+      <package value="benzene" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Go Build.benzene-help" />
       <item itemvalue="Go Build.benzene-version" />
       <item itemvalue="Go Build.benzene-console" />
+      <item itemvalue="Go Build.go build mkalloc.go" />
+      <item itemvalue="Go Build.benzene-account" />
       <item itemvalue="Go Build.benzene" />
     </list>
   </component>
@@ -198,10 +247,28 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="lalala" />
+    <option name="LAST_COMMIT_MESSAGE" value="lalala" />
+  </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
+    <environment>
+      <map>
+        <entry key="GOPROXY" value="https://goproxy.io,direct" />
+      </map>
+    </environment>
   </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/core/mkalloc.go</url>
+          <line>87</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <watches-manager>
       <configuration name="GoApplicationRunConfiguration">
         <watch expression="*(*&quot;github.com/ethereum/go-ethereum/common.Hash&quot;)(824634483392)" />

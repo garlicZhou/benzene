@@ -6,9 +6,7 @@ import (
 	"benzene/internal/bnzapi"
 	"benzene/internal/debug"
 	"benzene/internal/flags"
-	"benzene/internal/genesis"
 	"benzene/node"
-	"benzene/p2p"
 	"fmt"
 	"gopkg.in/urfave/cli.v1"
 	"os"
@@ -17,11 +15,6 @@ import (
 
 const (
 	clientIdentifier = "benzene" // Client identifier to advertise over the network
-)
-
-var (
-	myHost          p2p.Host
-	initialAccounts []*genesis.DeployAccount
 )
 
 var (
@@ -62,6 +55,8 @@ func init() {
 	// Initialize the CLI app and start Benzene
 	app.Action = benzene
 	app.Commands = []cli.Command{
+		// See accountcmd.go:
+		accountCommand,
 		// See consolecmd.go:
 		consoleCommand,
 		attachCommand,

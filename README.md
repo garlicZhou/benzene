@@ -1,10 +1,12 @@
 # Benzene
 
-Benzene is a toy blockchain sharding system based on go-ethereum and Harmony.
+Benzene is a toy blockchain sharding system based on go-ethereum (v1.9.24) and Harmony.
 
 ## Requirements
 
-On Linux (Ubuntu)
+On Linux (Ubuntu 18.04)
+
+Go 1.14.1
 
 ```shell
 sudo apt install libgmp-dev libssl-dev curl git \
@@ -56,14 +58,71 @@ Similar to Harmony, instead of sending messages to individual nodes like go-ethe
 
 All message communication depends on `SendMessageToGroups` function in benzene/p2p.
 
-message ...
+## RPC API
 
-protobuf ...
+1. GetShardID
+
+Returns the shard id of the node
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+    "method":"bnz_getShardID",
+    "params":[],
+    "id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
+
+2. BlockNumber
+
+Returns the block number of a shard
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+    "method":"bnz_blockNumber",
+    "params":[1],
+    "id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
+
+3. GetBalance
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+	"method":"bnz_getBalance",
+	"params":[1, "0x7df9a875a174b3bc565e6424a0050ebc1b2d1d82", "latest"],
+	"id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
+
+ps. In `core/genesis_alloc.go`, we have pre-allocated 300000 to 0x7df9a875a174b3bc565e6424a0050ebc1b2d1d82.
+
+If you want to pre-allocate money to accounts, you can add accounts and the corresponding money to `core/prealloc_account.json`, run `mkalloc.go` and copy the output to `core/genesis_alloc.go`.
+
+4. SendTransaction 
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+    "method":"bnz_sendTransaction",
+    "params":[{
+        "from": "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
+        "to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
+        "shardID": "0x1",
+        "toShardID": "0x1",
+        "gas": "0x76c0",
+        "gasPrice": "0x76c0",
+        "value": "0x76c0"
+    }],
+    "id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
 
 ## TODO
 
-1. Resharding
-2. New(), closeDatabases, ephemKeystore in node
+1. Smart contract support (including virtual machines, gas estimation, ...)
 
 ## Reference
 

@@ -1,3 +1,19 @@
+// Copyright 2014 The go-ethereum Authors
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
 package types
 
 import (
@@ -38,6 +54,7 @@ type txdata struct {
 	ToShardID    uint64          `json:"toShardID"  gencodec:"required"`
 	Recipient    *common.Address `json:"to"         rlp:"nil"` // nil means contract creation
 	Amount       *big.Int        `json:"value"      gencodec:"required"`
+	Payload      []byte          `json:"input"    gencodec:"required"`
 
 	// Signature values
 	V *big.Int `json:"v" gencodec:"required"`
@@ -53,19 +70,30 @@ type txdataMarshaling struct {
 	Price        *hexutil.Big
 	GasLimit     hexutil.Uint64
 	Amount       *hexutil.Big
+	Payload      hexutil.Bytes
 	V            *hexutil.Big
 	R            *hexutil.Big
 	S            *hexutil.Big
 }
 
-func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int) *Transaction {
-	return newTransaction(nonce, &to, amount, gasLimit, gasPrice)
+func NewTransaction(nonce uint64, to common.Address, shardID uint64, toShardID uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+	return newTransaction(nonce, &to, shardID, toShardID, amount, gasLimit, gasPrice, data)
 }
 
-func newTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int) *Transaction {
+func NewContractCreation(nonce uint64, shardID uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+	return newTransaction(nonce, nil, shardID, shardID, amount, gasLimit, gasPrice, data)
+}
+
+func newTransaction(nonce uint64, to *common.Address, shardID uint64, toShardID uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
+	if len(data) > 0 {
+		data = common.CopyBytes(data)
+	}
 	d := txdata{
 		AccountNonce: nonce,
+		ShardID:      shardID,
+		ToShardID:    toShardID,
 		Recipient:    to,
+		Payload:      data,
 		Amount:       new(big.Int),
 		GasLimit:     gasLimit,
 		Price:        new(big.Int),
@@ -164,6 +192,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
 func (tx *Transaction) Gas() uint64        { return tx.data.GasLimit }
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
 func (tx *Transaction) GasPriceCmp(other *Transaction) int {

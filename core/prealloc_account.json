@@ -1,0 +1,15 @@
+{
+  "config": {},
+  "difficulty": "1",
+  "gasLimit": "8000000",
+  "alloc": {
+    "7df9a875a174b3bc565e6424a0050ebc1b2d1d82": {
+      "balance": "300000",
+      "shardID": 1
+    },
+    "f41c74c9ae680c1aa78f42e5647a62f353b7bdde": {
+      "balance": "400000",
+      "shardID": 2
+    }
+  }
+}

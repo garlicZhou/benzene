@@ -78,6 +78,10 @@ var (
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString(node.DefaultDataDir()),
 	}
+	KeyStoreDirFlag = DirectoryFlag{
+		Name:  "keystore",
+		Usage: "Directory for the keystore (default = inside the datadir)",
+	}
 	// RPC settings
 	IPCDisabledFlag = cli.BoolFlag{
 		Name:  "ipcdisable",
@@ -318,6 +322,10 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	setWS(ctx, cfg)
 	setDataDir(ctx, cfg)
 	SetP2PConfig(ctx, cfg)
+
+	if ctx.GlobalIsSet(KeyStoreDirFlag.Name) {
+		cfg.KeyStoreDir = ctx.GlobalString(KeyStoreDirFlag.Name)
+	}
 }
 
 // CheckExclusive verifies that only a single instance of the provided flags was

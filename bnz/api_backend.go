@@ -17,18 +17,19 @@
 package bnz
 
 import (
+	"benzene/accounts"
 	"benzene/core"
 	"benzene/core/rawdb"
 	"benzene/core/types"
 	"benzene/params"
 	"context"
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
+	"math/big"
 )
 
 // BnzAPIBackend implements bnzapi.Backend for full nodes
@@ -233,8 +234,17 @@ func (b *BnzAPIBackend) SubscribeNewTxsEvent(shardid uint64, ch chan<- core.NewT
 	return b.bnz.TxPool(shardid).SubscribeNewTxsEvent(ch)
 }
 
+func (b *BnzAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
+	//return b.gpo.SuggestPrice(ctx)
+	return big.NewInt(0), nil
+}
+
 func (b *BnzAPIBackend) ChainDb(shardid uint64) ethdb.Database {
 	return b.bnz.ChainDb(shardid)
+}
+
+func (b *BnzAPIBackend) AccountManager() *accounts.Manager {
+	return b.bnz.AccountManager()
 }
 
 func (b *BnzAPIBackend) ExtRPCEnabled() bool {
