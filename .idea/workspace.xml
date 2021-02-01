@@ -22,35 +22,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="lalala">
-      <change afterPath="$PROJECT_DIR$/cmd/benzene/accountcmd.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/genesis_alloc.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/mkalloc.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/prealloc_account.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/types/bloom9.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/types/receipt.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnz/api_backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnz/api_backend.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnz/backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnz/backend.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/utils/flags.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/utils/flags.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/gen_genesis.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/gen_genesis.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/gen_genesis_account.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/gen_genesis_account.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/genesis.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/genesis.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/accessors_metadata.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/rawdb/schema.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/rawdb/schema.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/block.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/gen_header_json.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/gen_header_json.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/gen_tx_json.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/gen_tx_json.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/header.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/header.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/types/transaction.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/types/transaction.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/bnzapi/api.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/api.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/bnzapi/backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/backend.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
-    </list>
+    <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="lalala" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
