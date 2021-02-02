@@ -2,12 +2,12 @@ package main
 
 import (
 	"benzene/cmd/utils"
-	"benzene/console/prompt"
 	"benzene/internal/bnzapi"
 	"benzene/internal/debug"
 	"benzene/internal/flags"
 	"benzene/node"
 	"fmt"
+	"github.com/ethereum/go-ethereum/console/prompt"
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"sort"
@@ -46,6 +46,7 @@ var (
 		utils.WSPortFlag,
 		utils.WSApiFlag,
 		utils.WSAllowedOriginsFlag,
+		utils.InsecureUnlockAllowedFlag,
 	}
 
 	metricsFlags = []cli.Flag{}

@@ -2,18 +2,183 @@ package bnzapi
 
 import (
 	"benzene/accounts"
+	"benzene/accounts/keystore"
 	"benzene/core/types"
 	"bytes"
 	"context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"math/big"
+	"time"
 )
+
+// PrivateAccountAPI provides an API to access accounts managed by this node.
+// It offers methods to create, (un)lock en list accounts. Some methods accept
+// passwords and are therefore considered private by default.
+type PrivateAccountAPI struct {
+	am        *accounts.Manager
+	nonceLock *AddrLocker
+	b         Backend
+}
+
+// NewPrivateAccountAPI create a new PrivateAccountAPI.
+func NewPrivateAccountAPI(b Backend, nonceLock *AddrLocker) *PrivateAccountAPI {
+	return &PrivateAccountAPI{
+		am:        b.AccountManager(),
+		nonceLock: nonceLock,
+		b:         b,
+	}
+}
+
+// listAccounts will return a list of addresses for accounts this node manages.
+func (s *PrivateAccountAPI) ListAccounts() []common.Address {
+	return s.am.Accounts()
+}
+
+// rawWallet is a JSON representation of an accounts.Wallet interface, with its
+// data contents extracted into plain fields.
+type rawWallet struct {
+	URL      string             `json:"url"`
+	Status   string             `json:"status"`
+	Failure  string             `json:"failure,omitempty"`
+	Accounts []accounts.Account `json:"accounts,omitempty"`
+}
+
+// ListWallets will return a list of wallets this node manages.
+func (s *PrivateAccountAPI) ListWallets() []rawWallet {
+	wallets := make([]rawWallet, 0) // return [] instead of nil if empty
+	for _, wallet := range s.am.Wallets() {
+		status, failure := wallet.Status()
+
+		raw := rawWallet{
+			URL:      wallet.URL().String(),
+			Status:   status,
+			Accounts: wallet.Accounts(),
+		}
+		if failure != nil {
+			raw.Failure = failure.Error()
+		}
+		wallets = append(wallets, raw)
+	}
+	return wallets
+}
+
+// OpenWallet initiates a hardware wallet opening procedure, establishing a USB
+// connection and attempting to authenticate via the provided passphrase. Note,
+// the method may return an extra challenge requiring a second open (e.g. the
+// Trezor PIN matrix challenge).
+func (s *PrivateAccountAPI) OpenWallet(url string, passphrase *string) error {
+	wallet, err := s.am.Wallet(url)
+	if err != nil {
+		return err
+	}
+	pass := ""
+	if passphrase != nil {
+		pass = *passphrase
+	}
+	return wallet.Open(pass)
+}
+
+// DeriveAccount requests a HD wallet to derive a new account, optionally pinning
+// it for later reuse.
+func (s *PrivateAccountAPI) DeriveAccount(url string, path string, pin *bool) (accounts.Account, error) {
+	wallet, err := s.am.Wallet(url)
+	if err != nil {
+		return accounts.Account{}, err
+	}
+	derivPath, err := accounts.ParseDerivationPath(path)
+	if err != nil {
+		return accounts.Account{}, err
+	}
+	if pin == nil {
+		pin = new(bool)
+	}
+	return wallet.Derive(derivPath, *pin)
+}
+
+// NewAccount will create a new account and returns the address for the new account.
+func (s *PrivateAccountAPI) NewAccount(password string) (common.Address, error) {
+	ks, err := fetchKeystore(s.am)
+	if err != nil {
+		return common.Address{}, err
+	}
+	acc, err := ks.NewAccount(password)
+	if err == nil {
+		log.Info("Your new key was generated", "address", acc.Address)
+		log.Warn("Please backup your key file!", "path", acc.URL.Path)
+		log.Warn("Please remember your password!")
+		return acc.Address, nil
+	}
+	return common.Address{}, err
+}
+
+// fetchKeystore retrieves the encrypted keystore from the account manager.
+func fetchKeystore(am *accounts.Manager) (*keystore.KeyStore, error) {
+	if ks := am.Backends(keystore.KeyStoreType); len(ks) > 0 {
+		return ks[0].(*keystore.KeyStore), nil
+	}
+	return nil, errors.New("local keystore not used")
+}
+
+// ImportRawKey stores the given hex encoded ECDSA key into the key directory,
+// encrypting it with the passphrase.
+func (s *PrivateAccountAPI) ImportRawKey(privkey string, password string) (common.Address, error) {
+	key, err := crypto.HexToECDSA(privkey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	ks, err := fetchKeystore(s.am)
+	if err != nil {
+		return common.Address{}, err
+	}
+	acc, err := ks.ImportECDSA(key, password)
+	return acc.Address, err
+}
+
+// UnlockAccount will unlock the account associated with the given address with
+// the given password for duration seconds. If duration is nil it will use a
+// default of 300 seconds. It returns an indication if the account was unlocked.
+func (s *PrivateAccountAPI) UnlockAccount(ctx context.Context, addr common.Address, password string, duration *uint64) (bool, error) {
+	// When the API is exposed by external RPC(http, ws etc), unless the user
+	// explicitly specifies to allow the insecure account unlocking, otherwise
+	// it is disabled.
+	if s.b.ExtRPCEnabled() && !s.b.AccountManager().Config().InsecureUnlockAllowed {
+		return false, errors.New("account unlock with HTTP access is forbidden")
+	}
+
+	const max = uint64(time.Duration(math.MaxInt64) / time.Second)
+	var d time.Duration
+	if duration == nil {
+		d = 300 * time.Second
+	} else if *duration > max {
+		return false, errors.New("unlock duration too large")
+	} else {
+		d = time.Duration(*duration) * time.Second
+	}
+	ks, err := fetchKeystore(s.am)
+	if err != nil {
+		return false, err
+	}
+	err = ks.TimedUnlock(accounts.Account{Address: addr}, password, d)
+	if err != nil {
+		log.Warn("Failed account unlock attempt", "address", addr, "err", err)
+	}
+	return err == nil, err
+}
+
+// LockAccount will lock the account associated with the given address when it's unlocked.
+func (s *PrivateAccountAPI) LockAccount(addr common.Address) bool {
+	if ks, err := fetchKeystore(s.am); err == nil {
+		return ks.Lock(addr) == nil
+	}
+	return false
+}
 
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
 // It offers only methods that operate on public data that is freely available to anyone.
@@ -296,6 +461,93 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Co
 		return &n
 	}
 	return nil
+}
+
+// GetTransactionByBlockNumberAndIndex returns the transaction for the given block number and index.
+func (s *PublicTransactionPoolAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, shardid uint64, blockNr rpc.BlockNumber, index hexutil.Uint) *RPCTransaction {
+	if block, _ := s.b.BlockByNumber(ctx, shardid, blockNr); block != nil {
+		return newRPCTransactionFromBlockIndex(block, uint64(index))
+	}
+	return nil
+}
+
+// GetTransactionByBlockHashAndIndex returns the transaction for the given block hash and index.
+func (s *PublicTransactionPoolAPI) GetTransactionByBlockHashAndIndex(ctx context.Context, shardid uint64, blockHash common.Hash, index hexutil.Uint) *RPCTransaction {
+	if block, _ := s.b.BlockByHash(ctx, shardid, blockHash); block != nil {
+		return newRPCTransactionFromBlockIndex(block, uint64(index))
+	}
+	return nil
+}
+
+// GetRawTransactionByBlockNumberAndIndex returns the bytes of the transaction for the given block number and index.
+func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockNumberAndIndex(ctx context.Context, shardid uint64, blockNr rpc.BlockNumber, index hexutil.Uint) hexutil.Bytes {
+	if block, _ := s.b.BlockByNumber(ctx, shardid, blockNr); block != nil {
+		return newRPCRawTransactionFromBlockIndex(block, uint64(index))
+	}
+	return nil
+}
+
+// GetRawTransactionByBlockHashAndIndex returns the bytes of the transaction for the given block hash and index.
+func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockHashAndIndex(ctx context.Context, shardid uint64, blockHash common.Hash, index hexutil.Uint) hexutil.Bytes {
+	if block, _ := s.b.BlockByHash(ctx, shardid, blockHash); block != nil {
+		return newRPCRawTransactionFromBlockIndex(block, uint64(index))
+	}
+	return nil
+}
+
+// GetTransactionCount returns the number of transactions the given address has sent for the given block number
+func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, shardid uint64, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
+	// Ask transaction pool for the nonce which includes pending transactions
+	if blockNr, ok := blockNrOrHash.Number(); ok && blockNr == rpc.PendingBlockNumber {
+		nonce, err := s.b.GetPoolNonce(ctx, shardid, address)
+		if err != nil {
+			return nil, err
+		}
+		return (*hexutil.Uint64)(&nonce), nil
+	}
+	// Resolve block number and use its state to ask for the nonce
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, shardid, blockNrOrHash)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	nonce := state.GetNonce(address)
+	return (*hexutil.Uint64)(&nonce), state.Error()
+}
+
+// GetTransactionByHash returns the transaction for the given hash
+func (s *PublicTransactionPoolAPI) GetTransactionByHash(ctx context.Context, shardid uint64, hash common.Hash) (*RPCTransaction, error) {
+	// Try to return an already finalized transaction
+	tx, blockHash, blockNumber, index, err := s.b.GetTransaction(ctx, shardid, hash)
+	if err != nil {
+		return nil, err
+	}
+	if tx != nil {
+		return newRPCTransaction(tx, blockHash, blockNumber, index), nil
+	}
+	// No finalized transaction, try to retrieve it from the pool
+	if tx := s.b.GetPoolTransaction(shardid, hash); tx != nil {
+		return newRPCPendingTransaction(tx), nil
+	}
+
+	// Transaction unknown, return as such
+	return nil, nil
+}
+
+// GetRawTransactionByHash returns the bytes of the transaction for the given hash.
+func (s *PublicTransactionPoolAPI) GetRawTransactionByHash(ctx context.Context, shardid uint64, hash common.Hash) (hexutil.Bytes, error) {
+	// Retrieve a finalized transaction, or a pooled otherwise
+	tx, _, _, _, err := s.b.GetTransaction(ctx, shardid, hash)
+	if err != nil {
+		return nil, err
+	}
+	if tx == nil {
+		if tx = s.b.GetPoolTransaction(shardid, hash); tx == nil {
+			// Transaction not found anywhere, abort
+			return nil, nil
+		}
+	}
+	// Serialize to RLP and return
+	return rlp.EncodeToBytes(tx)
 }
 
 // SendTxArgs represents the arguments to sumbit a new transaction into the transaction pool.

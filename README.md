@@ -92,7 +92,7 @@ curl -d '{
 curl -d '{
     "jsonrpc":"2.0",
 	"method":"bnz_getBalance",
-	"params":[1, "0x7df9a875a174b3bc565e6424a0050ebc1b2d1d82", "latest"],
+	"params":[1, "0xc2d7cf95645d33006175b78989035c7c9061d3f9", "latest"],
 	"id":1
 }' -H "Content-Type:application/json" -X POST "localhost:8545"
 ```
@@ -101,14 +101,40 @@ ps. In `core/genesis_alloc.go`, we have pre-allocated 300000 to 0x7df9a875a174b3
 
 If you want to pre-allocate money to accounts, you can add accounts and the corresponding money to `core/prealloc_account.json`, run `mkalloc.go` and copy the output to `core/genesis_alloc.go`.
 
-4. SendTransaction 
+4. ListWallets
+
+Returns all the account addresses of all keys in the key store.
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+	"method":"personal_listWallets",
+	"params":[],
+	"id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
+
+5. UnlockAccount
+
+Decrypts the key with the given address from the key store.
+
+```shell
+curl -d '{
+    "jsonrpc":"2.0",
+	"method":"personal_unlockAccount",
+	"params":["0xc2d7cf95645d33006175b78989035c7c9061d3f9","123456"],
+	"id":1
+}' -H "Content-Type:application/json" -X POST "localhost:8545"
+```
+
+6. SendTransaction 
 
 ```shell
 curl -d '{
     "jsonrpc":"2.0",
     "method":"bnz_sendTransaction",
     "params":[{
-        "from": "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
+        "from": "0xc2d7cf95645d33006175b78989035c7c9061d3f9",
         "to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
         "shardID": "0x1",
         "toShardID": "0x1",

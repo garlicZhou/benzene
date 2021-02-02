@@ -3,7 +3,7 @@
   "difficulty": "1",
   "gasLimit": "8000000",
   "alloc": {
-    "7df9a875a174b3bc565e6424a0050ebc1b2d1d82": {
+    "c2d7cf95645d33006175b78989035c7c9061d3f9": {
       "balance": "300000",
       "shardID": 1
     },
