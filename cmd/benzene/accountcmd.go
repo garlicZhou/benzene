@@ -24,6 +24,7 @@ account, create a new account or update an existing account.`,
 				Action: utils.MigrateFlags(accountList),
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
+					utils.P2PKeyFileFlag,
 					utils.KeyStoreDirFlag,
 				},
 				Description: `
@@ -35,6 +36,7 @@ Print a short summary of all accounts`,
 				Action: utils.MigrateFlags(accountImport),
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
+					utils.P2PKeyFileFlag,
 					utils.KeyStoreDirFlag,
 					utils.PasswordFileFlag,
 					utils.LightKDFFlag,

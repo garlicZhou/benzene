@@ -23,22 +23,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="lalala">
-      <change afterPath="$PROJECT_DIR$/cmd/utils/prompt.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/benzene/accountcmd.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/accountcmd.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/consolecmd.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/consolecmd.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/utils/flags.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/utils/flags.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/console/bridge.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/console/console.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/console/prompt/prompter.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/genesis_alloc.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/genesis_alloc.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/prealloc_account.json" beforeDir="false" afterPath="$PROJECT_DIR$/core/prealloc_account.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/tx_pool.go" beforeDir="false" afterPath="$PROJECT_DIR$/core/tx_pool.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/bnzapi/api.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/api.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/bnzapi/backend.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/bnzapi/backend.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/config.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
