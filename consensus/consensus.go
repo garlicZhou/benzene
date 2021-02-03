@@ -3,6 +3,7 @@ package consensus
 import (
 	msg_pb "benzene/api/proto/message"
 	"benzene/core"
+	"benzene/core/types"
 	"benzene/multibls"
 	"benzene/p2p"
 	"context"
@@ -41,4 +42,11 @@ func New(
 // HandleMessageUpdate will update the consensus state according to received message
 func (consensus *Consensus) HandleConsensusMessage(ctx context.Context, msg *msg_pb.Message, senderKey *bls.SerializedPublicKey) error {
 	return nil
+}
+
+// Start waits for the next new block and run consensus
+func (consensus *Consensus) Start(
+	blockChannel chan *types.Block, stopChan, stoppedChan, startChannel chan struct{},
+) {
+
 }

@@ -57,13 +57,13 @@ type ethstatsConfig struct {
 	URL string `toml:",omitempty"`
 }
 
-type gethConfig struct {
+type bnzConfig struct {
 	Bnz      bnz.Config
 	Node     node.Config
 	Ethstats ethstatsConfig
 }
 
-func loadConfig(file string, cfg *gethConfig) error {
+func loadConfig(file string, cfg *bnzConfig) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return err
@@ -90,9 +90,9 @@ func defaultNodeConfig() node.Config {
 }
 
 // makeConfigNode loads geth configuration and creates a blank node instance.
-func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
+func makeConfigNode(ctx *cli.Context) (*node.Node, bnzConfig) {
 	// Load defaults.
-	cfg := gethConfig{
+	cfg := bnzConfig{
 		Bnz:  bnz.DefaultConfig,
 		Node: defaultNodeConfig(),
 	}

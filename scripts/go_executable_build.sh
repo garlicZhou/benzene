@@ -5,7 +5,7 @@ export GO111MODULE=on
 declare -A SRC
 SRC[benzene]=./cmd/benzene
 
-BINDIR=bin
+BINDIR=build/bin
 BUCKET=unique-bucket-bin
 PUBBUCKET=pub.harmony.one
 REL=
@@ -105,7 +105,7 @@ function build_only
 
    for bin in "${!SRC[@]}"; do
       if [[ -z "$build" || "$bin" == "$build" ]]; then
-         rm -f $BINDIR/$bin
+         #rm -f $BINDIR/$bin
          echo "building ${SRC[$bin]}"
          if [ "$DEBUG" == "true" ]; then
             env GOOS=$GOOS GOARCH=$GOARCH go build $VERBOSE -gcflags="${GO_GCFLAGS}" -ldflags="-X main.version=v${VERSION} -X main.commit=${COMMIT} -X main.builtAt=${BUILTAT} -X main.builtBy=${BUILTBY}" -o $BINDIR/$bin $RACE $TRACEPTR ${SRC[$bin]}

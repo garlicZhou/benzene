@@ -33,7 +33,7 @@ cd $(go env GOPATH)/src/github.com/hongzicong/benzene
 
 If you get 'unknown command' or something along those lines, make sure to install golang first.
 
-3. Run bash `scripts/install_build_tools.sh` to ensure build tools are of correct versions.
+3. Set `chmod 777 scripts/*.sh` Run bash `scripts/install_build_tools.sh` to ensure build tools are of correct versions.
 
 4. Build the harmony binary & dependent libs
 ```shell
@@ -48,7 +48,7 @@ There is a beacon chain used to record the identities of participants (such as p
 
 ### Service Module
 
-In Harmony, a node runs a certain set of services and use a service manager to manage (start or stop) services.
+Similar to Harmony, a node runs a certain set of services and use a service manager to manage (start or stop) services.
 
 ### Communication Module
 
@@ -148,8 +148,22 @@ curl -d '{
 
 ## TODO
 
-1. Smart contract support (including virtual machines, gas estimation, ...)
+1. Intra-shard collective signing-based consensus (Feb. 10, ZHOU Enyuan)
+
+2. Cross-shard transaction processing (Feb. 6, HONG Zicong)
+
+3. Large-scale deployment (Feb. 6, HUANG Shaoyong)
+
+4. Layer sharding consensus (Feb. 13, HONG Zicong)
+
+5. DRL consensus support (Feb. 20, ZHANG Jianting)
+
+6. Smart contract support (including virtual machines, gas estimation, ...)
 
 ## Reference
 
 1. https://geth.ethereum.org/docs/
+
+2. https://github.com/ethereum/go-ethereum
+
+3. https://github.com/harmony-one/harmony
