@@ -75,6 +75,14 @@ Similar to Harmony, instead of sending messages to individual nodes like go-ethe
 
 All message communication depends on `SendMessageToGroups` function in benzene/p2p.
 
+## Account Management
+
+1. import new account
+
+```shell
+account import ./bin/keystore/privatekey --datadir=./bin
+```
+
 ## RPC API
 
 1. GetShardID
