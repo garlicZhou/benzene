@@ -35,9 +35,26 @@ If you get 'unknown command' or something along those lines, make sure to instal
 
 3. Set `chmod 777 scripts/*.sh` Run bash `scripts/install_build_tools.sh` to ensure build tools are of correct versions.
 
-4. Build the harmony binary & dependent libs
+4. Build the binary & dependent libs
 ```shell
 make
+```
+
+5. You can find the binary and dependent libs in build/bin.
+
+```shell
+./build/bin/benzene --datadir=./bin --p2p.keyfile=./bin/.bnzkey -run.shard=1 --http --http.api personal,bnz --allow-insecure-unlock
+```
+
+6. If you get an error `error while loading shared libraries: libbls384_256.so: cannot open shared object file: No such file or directory`, you need to define the following environment variable.
+
+```shell
+export CGO_CFLAGS="-I$(go env GOPATH)/src/github.com/harmony-one/bls/include -I$(go env GOPATH)/src/github.com/harmony-one/mcl/include -I/usr/local/opt/openssl/include"
+export CGO_LDFLAGS="-L$(go env GOPATH)/src/github.com/harmony-one/bls/lib -L/usr/local/opt/openssl/lib"
+export LD_LIBRARY_PATH="$(go env GOPATH)/src/github.com/harmony-one/bls/lib:$(go env GOPATH)/src/github.com/harmony-one/mcl/lib:/usr/local/opt/openssl/lib"
+export LIBRARY_PATH=$LD_LIBRARY_PATH
+export DYLD_FALLBACK_LIBRARY_PATH=$LD_LIBRARY_PATH
+export GO111MODULE=on
 ```
 
 ## Design Overview
@@ -152,7 +169,7 @@ curl -d '{
 
 2. Cross-shard transaction processing (Feb. 6, HONG Zicong)
 
-3. Large-scale deployment (Feb. 6, HUANG Shaoyong)
+3. Large-scale deployment (Feb. 6, HONG Zicong)
 
 4. Layer sharding consensus (Feb. 13, HONG Zicong)
 

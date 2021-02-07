@@ -23,17 +23,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="927f3b63-bdbb-4323-99f9-76df87908b39" name="Default Changelist" comment="lalala">
-      <change afterPath="$PROJECT_DIR$/api/service/consensus/service.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/benzene/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/benzene/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/consensus.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/go_executable_build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/go_executable_build.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/goget.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/goget.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/install_build_tools.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/install_build_tools.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/install_protoc.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/install_protoc.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/setup_bls_build_flags.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/setup_bls_build_flags.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -129,10 +120,12 @@
       <go_parameters value="-i" />
       <parameters value="account list --datadir=./bin --p2p.keyfile=./bin/.bnzkey" />
       <envs>
-        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
-        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
-        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
-        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include -I/usr/local/opt/openssl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib -L/usr/local/opt/openssl/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib:/usr/local/opt/openssl/lib" />
+        <env name="LIBRARY_PATH" value="$LD_LIBRARY_PATH" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="$LD_LIBRARY_PATH" />
+        <env name="GO111MODULE" value="on" />
       </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
@@ -201,10 +194,12 @@
       <go_parameters value="-i" />
       <parameters value="--datadir=./bin --p2p.keyfile=./bin/.bnzkey -run.shard=1 --http --http.api personal,bnz --allow-insecure-unlock" />
       <envs>
-        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include" />
-        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib" />
-        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib" />
-        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="" />
+        <env name="CGO_CFLAGS" value="-I/home/hongzicong/go/src/github.com/harmony-one/bls/include -I/home/hongzicong/go/src/github.com/harmony-one/mcl/include -I/usr/local/opt/openssl/include" />
+        <env name="CGO_LDFLAGS" value="-L/home/hongzicong/go/src/github.com/harmony-one/bls/lib -L/usr/local/opt/openssl/lib" />
+        <env name="LD_LIBRARY_PATH" value="$PROJECT_DIR$/../../harmony-one/bls/lib:$PROJECT_DIR$/../../harmony-one/mcl/lib:/usr/local/opt/openssl/lib" />
+        <env name="LIBRARY_PATH" value="$LD_LIBRARY_PATH" />
+        <env name="DYLD_FALLBACK_LIBRARY_PATH" value="$LD_LIBRARY_PATH" />
+        <env name="GO111MODULE" value="on" />
       </envs>
       <kind value="PACKAGE" />
       <filePath value="$PROJECT_DIR$" />
