@@ -4,6 +4,10 @@ import (
 	"benzene/core/types"
 	"benzene/params"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/harmony-one/harmony/block"
+	"github.com/harmony-one/harmony/shard"
+	"github.com/harmony-one/harmony/shard/committee"
+	"math/big"
 )
 
 // ChainHeaderReader defines a small collection of methods needed to access the local
@@ -26,6 +30,36 @@ type ChainHeaderReader interface {
 
 	// ShardID returns shardID
 	ShardID() uint64
+	//shardID() uint32
+
+	// GetBlock retrieves a block from the database by hash and number.
+	GetBlock(hash common.Hash, number uint64) *types.Block
+
+	// ReadShardState retrieves sharding state given the epoch number.
+	// This api reads the shard state cached or saved on the chaindb.
+	// Thus, only should be used to read the shard state of the current chain.
+	ReadShardState(epoch *big.Int) (*shard.State, error)
+
+	// ReadValidatorList retrieves the list of all validators
+	ReadValidatorList() ([]common.Address, error)
+
+	// Methods needed for EPoS committee assignment calculation
+	committee.StakingCandidatesReader
+	// Methods for reading right epoch snapshot
+	//staking.ValidatorSnapshotReader
+
+	//ReadBlockRewardAccumulator is the block-reward given for block number
+	ReadBlockRewardAccumulator(uint64) (*big.Int, error)
+
+	// ReadValidatorStats retrieves the running stats for a validator
+	//ReadValidatorStats(addr common.Address) (*staking.ValidatorStats, error)
+
+	// SuperCommitteeForNextEpoch calculates the next epoch's supper committee
+	// isVerify flag is to indicate which stage
+	// to call this function: true (verification stage), false(propose stage)
+	SuperCommitteeForNextEpoch(
+		beacon ChainReader, header *block.Header, isVerify bool,
+	) (*shard.State, error)
 }
 
 // ChainReader defines a small collection of methods needed to access the local
@@ -51,4 +85,30 @@ type Engine interface {
 	// the input slice).
 	VerifyHeaders(chain ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error)
 
+	// VerifySeal checks whether the crypto seal on a header is valid according to
+	// the consensus rules of the given engine.
+	VerifySeal(chain ChainReader, header *block.Header) error
+
+	// VerifyShardState verifies the shard state during epoch transition is valid
+	VerifyShardState(chain ChainReader, beacon ChainReader, header *block.Header) error
+
+	// Beaconchain provides the handle for Beaconchain
+	Beaconchain() ChainReader
+
+	// SetBeaconchain sets the beaconchain handler on engine
+	SetBeaconchain(ChainReader)
+
+	// Finalize runs any post-transaction state modifications (e.g. block rewards)
+	// and assembles the final block.
+	// Note: The block header and state database might be updated to reflect any
+	// consensus rules that happen at finalization (e.g. block rewards).
+	// sigsReady signal indicates whether the commit sigs are populated in the header object.
+	// Finalize() will block on sigsReady signal until the first value is send to the channel.
+	/*Finalize(
+		chain ChainReader, header *block.Header,
+		state *state.DB, txs []*types.Transaction,
+		//receipts []*types.Receipt, outcxs []*types.CXReceipt,
+		//incxs []*types.CXReceiptsProof, stks staking.StakingTransactions,
+		doubleSigners slash.Records, sigsReady chan bool, viewID func() uint64,
+	) (*types.Block, reward.Reader, error)*/
 }

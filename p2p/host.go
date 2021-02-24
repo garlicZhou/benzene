@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/harmony-one/harmony/p2p"
 	"net"
 	"os"
 	"runtime"
@@ -44,6 +45,26 @@ type Host interface {
 	GetOrJoin(topic string) (*libp2p_pubsub.Topic, error)
 	ListPeer(topic string) []libp2p_peer.ID
 	ListTopic() []string
+}
+
+func (h Host) GetSelfPeer() p2p.Peer {
+	panic("implement me")
+}
+
+func (h Host) AddPeer(peer *p2p.Peer) error {
+	panic("implement me")
+}
+
+func (h Host) ConnectHostPeer(peer p2p.Peer) error {
+	panic("implement me")
+}
+
+func (h Host) SendMessageToGroups(groups []interface{}, msg []byte) error {
+	panic("implement me")
+}
+
+func (h Host) ListBlockedPeer() []libp2p_peer.ID {
+	panic("implement me")
 }
 
 type Peer struct {
