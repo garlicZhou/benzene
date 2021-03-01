@@ -5,8 +5,8 @@ import (
 
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/harmony-one/harmony/crypto/bls"
-	"benzene/internal/utils"
 )
 
 // ReadSignatureBitmapByPublicKeys read the payload of signature and bitmap based on public keys
@@ -31,11 +31,11 @@ func ReadSignatureBitmapByPublicKeys(recvPayload []byte, publicKeys []bls.Public
 	}
 	mask, err := bls.NewMask(publicKeys, nil)
 	if err != nil {
-		utils.Logger().Warn().Err(err).Msg("onNewView unable to setup mask for prepared message")
+		log.Warn("onNewView unable to setup mask for prepared message")
 		return nil, nil, errors.New("unable to setup mask from payload")
 	}
 	if err := mask.SetMask(bitmap); err != nil {
-		utils.Logger().Warn().Err(err).Msg("mask.SetMask failed")
+		log.Warn("mask.SetMask failed")
 	}
 	return &aggSig, mask, nil
 }

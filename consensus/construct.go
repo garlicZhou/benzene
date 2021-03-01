@@ -11,8 +11,8 @@ import (
 	"benzene/api/proto"
 	msg_pb "benzene/api/proto/message"
 	"benzene/consensus/quorum"
-	"benzene/internal/utils"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // NetworkMessage is a message intended to be
@@ -84,7 +84,7 @@ func (consensus *Consensus) construct(
 		// TODO: use a persistent bitmap to report bitmap
 		mask, err := bls.NewMask(consensus.Decider.Participants(), nil)
 		if err != nil {
-			utils.Logger().Warn().Err(err).Msg("unable to setup mask for multi-sig message")
+			log.Warn("unable to setup mask for multi-sig message")
 			return nil, err
 		}
 		for _, key := range priKeys {
@@ -136,18 +136,14 @@ func (consensus *Consensus) construct(
 		marshaledMessage, err = protobuf.Marshal(message)
 	}
 	if err != nil {
-		utils.Logger().Error().Err(err).
-			Str("phase", p.String()).
-			Msg("Failed to sign and marshal consensus message")
+		log.Error("Failed to sign and marshal consensus message", "phase", p.String())
 		return nil, err
 	}
 
 	FBFTMsg, err2 := consensus.ParseFBFTMessage(message)
 
 	if err2 != nil {
-		utils.Logger().Error().Err(err).
-			Str("phase", p.String()).
-			Msg("failed to deal with the FBFT message")
+		log.Error("failed to deal with the FBFT message", "phase", p.String())
 		return nil, err
 	}
 
@@ -172,9 +168,7 @@ func (consensus *Consensus) constructQuorumSigAndBitmap(p quorum.Phase) []byte {
 	} else if p == quorum.Commit {
 		buffer.Write(consensus.commitBitmap.Bitmap)
 	} else {
-		utils.Logger().Error().
-			Str("phase", p.String()).
-			Msg("[constructQuorumSigAndBitmap] Invalid phase is supplied.")
+		log.Error("[constructQuorumSigAndBitmap] Invalid phase is supplied.", "phase", p.String())
 		return []byte{}
 	}
 	return buffer.Bytes()

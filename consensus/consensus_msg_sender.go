@@ -4,10 +4,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+	"github.com/ethereum/go-ethereum/log"
 	msg_pb "benzene/api/proto/message"
-	nodeconfig "benzene/internal/configs/node"
-	"benzene/internal/utils"
+	nodeconfig "benzene/internal/configs"
 	"benzene/p2p"
 )
 
@@ -115,9 +114,11 @@ func (sender *MessageSender) Retry(msgRetry *MessageRetry) {
 
 		msgRetry.retryCount++
 		if err := sender.host.SendMessageToGroups(msgRetry.groups, msgRetry.p2pMsg); err != nil {
-			utils.Logger().Warn().Str("groupID[0]", msgRetry.groups[0].String()).Uint64("blockNum", msgRetry.blockNum).Str("MsgType", msgRetry.msgType.String()).Int("RetryCount", msgRetry.retryCount).Msg("[Retry] Failed re-sending consensus message")
+			log.Warn("[Retry] Failed re-sending consensus message", "groupID[0]", msgRetry.groups[0].String(), "blockNum", msgRetry.blockNum,
+				"MsgType", msgRetry.msgType.String(), "RetryCount", msgRetry.retryCount)
 		} else {
-			utils.Logger().Info().Str("groupID[0]", msgRetry.groups[0].String()).Uint64("blockNum", msgRetry.blockNum).Str("MsgType", msgRetry.msgType.String()).Int("RetryCount", msgRetry.retryCount).Msg("[Retry] Successfully resent consensus message")
+			log.Info("[Retry] Successfully resent consensus message", "groupID[0]", msgRetry.groups[0].String(),
+				"blockNum", msgRetry.blockNum, "MsgType", msgRetry.msgType.String(), "RetryCount", msgRetry.retryCount)
 		}
 	}
 }

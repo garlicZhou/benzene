@@ -24,15 +24,14 @@ func (consensus *Consensus) checkDoubleSign(recvMsg *FBFTMessage) bool {
 					if bytes.Compare(pubKey2.Bytes[:], pubKey1[:]) == 0 {
 						for _, blk := range consensus.FBFTLog.GetBlocksByNumber(recvMsg.BlockNum) {
 							firstSignedHeader := blk.Header()
-							areHeightsEqual := firstSignedHeader.Number().Uint64() == recvMsg.BlockNum
-							areViewIDsEqual := firstSignedHeader.ViewID().Uint64() == recvMsg.ViewID
+							areHeightsEqual := firstSignedHeader.Number.Uint64() == recvMsg.BlockNum
 							areHeadersEqual := firstSignedHeader.Hash() == recvMsg.BlockHash
 
 							// If signer already firstSignedHeader, and the block height is the same
 							// and the viewID is the same, then we need to verify the block
 							// hash, and if block hash is different, then that is a clear
 							// case of double signing
-							if areHeightsEqual && areViewIDsEqual && !areHeadersEqual {
+							if areHeightsEqual && !areHeadersEqual {
 								var doubleSign bls_core.Sign
 								if err := doubleSign.Deserialize(recvMsg.Payload); err != nil {
 									consensus.getLogger().Err(err).Str("msg", recvMsg.String()).

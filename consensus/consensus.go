@@ -5,7 +5,7 @@ import (
 	"benzene/consensus/quorum"
 	"benzene/core"
 	"benzene/core/types"
-	nodeconfig "benzene/internal/configs/node"
+	nodeconfig "benzene/internal/configs"
 	"benzene/internal/utils"
 	"benzene/multibls"
 	"benzene/p2p"
@@ -13,9 +13,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/harmony-one/abool"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/block"
 	"github.com/harmony-one/harmony/crypto/bls"
 	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
 	vrf_bls "github.com/harmony-one/harmony/crypto/vrf/bls"
@@ -307,7 +307,6 @@ func (consensus *Consensus) finalCommit() {
 	consensus.getLogger().Info().
 		Uint64("blockNum", block.NumberU64()).
 		Uint64("epochNum", block.Epoch().Uint64()).
-		Uint64("ViewId", block.Header().ViewID().Uint64()).
 		Str("blockHash", block.Hash().String()).
 		Int("numTxns", len(block.Transactions())).
 		Int("numStakingTxns", len(block.StakingTransactions())).
@@ -330,7 +329,7 @@ func (consensus *Consensus) finalCommit() {
 				select {
 				case consensus.CommitSigChannel <- commitSigAndBitmap:
 				case <-time.After(CommitSigSenderTimeout):
-					utils.Logger().Error().Err(err).Msg("[finalCommit] channel not received after 6s for commitSigAndBitmap")
+					log.Error("[finalCommit] channel not received after 6s for commitSigAndBitmap")
 				}
 			}()
 		}
@@ -353,16 +352,14 @@ func (consensus *Consensus) commitBlock(blk *types.Block, committedMsg *FBFTMess
 	consensus.FinishFinalityCount()
 	consensus.PostConsensusJob(blk)
 	consensus.SetupForNewConsensus(blk, committedMsg)
-	utils.Logger().Info().Uint64("blockNum", blk.NumberU64()).
-		Str("hash", blk.Header().Hash().Hex()).
-		Msg("Added New Block to Blockchain!!!")
+	log.Info("Added New Block to Blockchain!!!", "blockNum", blk.NumberU64(), "hash", blk.Header().Hash().Hex())
 	return nil
 }
 
 // SetupForNewConsensus sets the state for new consensus
 func (consensus *Consensus) SetupForNewConsensus(blk *types.Block, committedMsg *FBFTMessage) {
 	atomic.StoreUint64(&consensus.blockNum, blk.NumberU64()+1)
-	consensus.SetCurBlockViewID(committedMsg.ViewID + 1)
+	//consensus.SetCurBlockViewID(committedMsg.ViewID + 1)
 	consensus.LeaderPubKey = committedMsg.SenderPubkeys[0]
 	// Update consensus keys at last so the change of leader status doesn't mess up normal flow
 	if blk.IsLastBlockInEpoch() {
@@ -594,11 +591,11 @@ func (consensus *Consensus) GenerateVrfAndProof(newBlock *types.Block, vrfBlockN
 }
 
 // ValidateVrfAndProof validates a VRF/Proof from hash of previous block
-func (consensus *Consensus) ValidateVrfAndProof(headerObj *block.Header) bool {
+func (consensus *Consensus) ValidateVrfAndProof(headerObj *types.Header) bool {
 	vrfPk := vrf_bls.NewVRFVerifier(consensus.LeaderPubKey.Object)
 	var blockHash [32]byte
 	previousHeader := consensus.Blockchain.GetHeaderByNumber(
-		headerObj.Number().Uint64() - 1,
+		headerObj.Number.Uint64() - 1,
 	)
 	if previousHeader == nil {
 		return false
@@ -613,14 +610,14 @@ func (consensus *Consensus) ValidateVrfAndProof(headerObj *block.Header) bool {
 	if err != nil {
 		consensus.getLogger().Warn().
 			Err(err).
-			Str("MsgBlockNum", headerObj.Number().String()).
+			Str("MsgBlockNum", headerObj.Number.String()).
 			Msg("[OnAnnounce] VRF verification error")
 		return false
 	}
 
 	if !bytes.Equal(hash[:], headerObj.Vrf()[:32]) {
 		consensus.getLogger().Warn().
-			Str("MsgBlockNum", headerObj.Number().String()).
+			Str("MsgBlockNum", headerObj.Number.String()).
 			Msg("[OnAnnounce] VRF proof is not valid")
 		return false
 	}
@@ -629,7 +626,7 @@ func (consensus *Consensus) ValidateVrfAndProof(headerObj *block.Header) bool {
 		headerObj.Epoch(),
 	)
 	consensus.getLogger().Info().
-		Str("MsgBlockNum", headerObj.Number().String()).
+		Str("MsgBlockNum", headerObj.Number.String()).
 		Int("Number of VRF", len(vrfBlockNumbers)).
 		Msg("[OnAnnounce] validated a new VRF")
 
@@ -674,11 +671,11 @@ func (consensus *Consensus) GenerateVdfAndProof(newBlock *types.Block, vrfBlockN
 }
 
 // ValidateVdfAndProof validates the VDF/proof in the current epoch
-func (consensus *Consensus) ValidateVdfAndProof(headerObj *block.Header) bool {
+func (consensus *Consensus) ValidateVdfAndProof(headerObj *types.Header) bool {
 	vrfBlockNumbers, err := consensus.Blockchain.ReadEpochVrfBlockNums(headerObj.Epoch())
 	if err != nil {
 		consensus.getLogger().Error().Err(err).
-			Str("MsgBlockNum", headerObj.Number().String()).
+			Str("MsgBlockNum", headerObj.Number.String()).
 			Msg("[OnAnnounce] failed to read VRF block numbers for VDF computation")
 	}
 
@@ -701,13 +698,13 @@ func (consensus *Consensus) ValidateVdfAndProof(headerObj *block.Header) bool {
 	copy(vdfOutput[:], headerObj.Vdf())
 	if vdfObject.Verify(vdfOutput) {
 		consensus.getLogger().Info().
-			Str("MsgBlockNum", headerObj.Number().String()).
+			Str("MsgBlockNum", headerObj.Number.String()).
 			Int("Num of VRF", consensus.VdfSeedSize()).
 			Msg("[OnAnnounce] validated a new VDF")
 
 	} else {
 		consensus.getLogger().Warn().
-			Str("MsgBlockNum", headerObj.Number().String()).
+			Str("MsgBlockNum", headerObj.Number.String()).
 			Uint64("Epoch", headerObj.Epoch().Uint64()).
 			Int("Num of VRF", consensus.VdfSeedSize()).
 			Msg("[OnAnnounce] VDF proof is not valid")
@@ -735,10 +732,9 @@ func New(
 
 	if multiBLSPriKey != nil {
 		consensus.priKey = multiBLSPriKey
-		utils.Logger().Info().
-			Str("publicKey", consensus.GetPublicKeys().SerializeToHexStr()).Msg("My Public Key")
+		log.Info("My Public Key", "publicKey", consensus.GetPublicKeys().SerializeToHexStr())
 	} else {
-		utils.Logger().Error().Msg("the bls key is nil")
+		log.Error("the bls key is nil")
 		return nil, fmt.Errorf("nil bls key, aborting")
 	}
 
@@ -899,9 +895,8 @@ func (consensus *Consensus) Start(
 			case <-consensus.syncReadyChan:
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] syncReadyChan")
 				consensus.mutex.Lock()
-				if consensus.blockNum < consensus.Blockchain.CurrentHeader().Number().Uint64()+1 {
-					consensus.SetBlockNum(consensus.Blockchain.CurrentHeader().Number().Uint64() + 1)
-					consensus.SetViewIDs(consensus.Blockchain.CurrentHeader().ViewID().Uint64() + 1)
+				if consensus.blockNum < consensus.Blockchain.CurrentHeader().Number.Uint64()+1 {
+					consensus.SetBlockNum(consensus.Blockchain.CurrentHeader().Number.Uint64() + 1)
 					mode := consensus.UpdateConsensusInformation()
 					consensus.current.SetMode(mode)
 					consensus.getLogger().Info().Msg("[syncReadyChan] Start consensus timer")
@@ -913,7 +908,7 @@ func (consensus *Consensus) Start(
 
 			case <-consensus.syncNotReadyChan:
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] syncNotReadyChan")
-				consensus.SetBlockNum(consensus.Blockchain.CurrentHeader().Number().Uint64() + 1)
+				consensus.SetBlockNum(consensus.Blockchain.CurrentHeader().Number.Uint64() + 1)
 				consensus.current.SetMode(Syncing)
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] Node is OUT OF SYNC")
 				consensusSyncCounterVec.With(prometheus.Labels{"consensus": "out_of_sync"}).Inc()

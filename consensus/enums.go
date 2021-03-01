@@ -29,7 +29,7 @@ const (
 var (
 	modeNames = map[Mode]string{
 		Normal:       "Normal",
-		ViewChanging: "ViewChanging",
+		//ViewChanging: "ViewChanging",
 		Syncing:      "Syncing",
 		Listening:    "Listening",
 	}

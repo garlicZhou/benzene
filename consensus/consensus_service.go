@@ -14,11 +14,9 @@ import (
 	"benzene/consensus/signature"
 	"benzene/internal/chain"
 	"benzene/internal/utils"
-	"benzene/multibls"
 	"github.com/ethereum/go-ethereum/common"
 	protobuf "github.com/golang/protobuf/proto"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/block"
 	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
 	"github.com/harmony-one/harmony/crypto/hash"
 	"github.com/harmony-one/harmony/shard"
@@ -189,7 +187,7 @@ func (consensus *Consensus) RegisterRndChannel(rndChannel chan [548]byte) {
 	consensus.RndChannel = rndChannel
 }
 
-// Check viewID, caller's responsibility to hold lock when change ignoreViewIDCheck
+/*// Check viewID, caller's responsibility to hold lock when change ignoreViewIDCheck
 func (consensus *Consensus) checkViewID(msg *FBFTMessage) error {
 	// just ignore consensus check for the first time when node join
 	if consensus.IgnoreViewIDCheck.IsSet() {
@@ -214,7 +212,7 @@ func (consensus *Consensus) checkViewID(msg *FBFTMessage) error {
 	}
 	return nil
 }
-
+*/
 // SetBlockNum sets the blockNum in consensus object, called at node bootstrap
 func (consensus *Consensus) SetBlockNum(blockNum uint64) {
 	atomic.StoreUint64(&consensus.blockNum, blockNum)
@@ -312,9 +310,9 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	consensus.BlockPeriod = 5 * time.Second
 
 	// Enable 2s block time at the twoSecondsEpoch
-	if consensus.Blockchain.Config().IsTwoSeconds(nextEpoch) {
+	/*if consensus.Blockchain.Config().IsTwoSeconds(nextEpoch) {
 		consensus.BlockPeriod = 2 * time.Second
-	}
+	}*/
 
 	/*isFirstTimeStaking := consensus.Blockchain.Config().IsStaking(nextEpoch) &&
 		curHeader.IsLastBlockInEpoch() && !consensus.Blockchain.Config().IsStaking(curEpoch)
@@ -491,10 +489,10 @@ func (consensus *Consensus) SetViewIDs(height uint64) {
 	//consensus.SetViewChangingID(height)
 }
 
-// SetCurBlockViewID set the current view ID
+/*// SetCurBlockViewID set the current view ID
 func (consensus *Consensus) SetCurBlockViewID(viewID uint64) {
 	consensus.current.SetCurBlockViewID(viewID)
-}
+}*/
 
 /*// SetViewChangingID set the current view change ID
 func (consensus *Consensus) SetViewChangingID(viewID uint64) {
@@ -561,7 +559,7 @@ func (consensus *Consensus) selfCommit(payload []byte) error {
 	consensus.aggregatedPrepareSig = aggSig
 	consensus.prepareBitmap = mask
 	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
-		block.Epoch(), block.Hash(), block.NumberU64(), block.Header().ViewID().Uint64())
+		block.Epoch(), block.Hash(), block.NumberU64(), nil)
 	for i, key := range consensus.priKey {
 		if err := consensus.commitBitmap.SetKey(key.Pub.Bytes, true); err != nil {
 			consensus.getLogger().Error().
@@ -578,7 +576,7 @@ func (consensus *Consensus) selfCommit(payload []byte) error {
 			key.Pri.SignHash(commitPayload),
 			common.BytesToHash(consensus.blockHash[:]),
 			block.NumberU64(),
-			block.Header().ViewID().Uint64(),
+			0,
 		); err != nil {
 			consensus.getLogger().Warn().
 				Err(err).

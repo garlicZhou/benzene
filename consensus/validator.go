@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	nodeconfig "benzene/internal/configs/node"
+	nodeconfig "benzene/internal/configs"
 	"github.com/harmony-one/harmony/crypto/bls"
 
 	msg_pb "benzene/api/proto/message"
@@ -32,7 +32,6 @@ func (consensus *Consensus) onAnnounce(msg *msg_pb.Message) {
 	consensus.StartFinalityCount()
 
 	consensus.getLogger().Debug().
-		Uint64("MsgViewID", recvMsg.ViewID).
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
 		Msg("[OnAnnounce] Announce message Added")
 	consensus.FBFTLog.AddVerifiedMessage(recvMsg)
@@ -81,7 +80,7 @@ func (consensus *Consensus) sendCommitMessages(blockObj *types.Block) {
 
 	// Sign commit signature on the received block and construct the p2p messages
 	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
-		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
+		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), 0)
 
 	p2pMsgs := consensus.constructP2pMessages(msg_pb.MessageType_COMMIT, commitPayload, priKeys)
 
@@ -103,7 +102,7 @@ func (consensus *Consensus) onPrepared(recvMsg *FBFTMessage) {
 
 	consensus.getLogger().Info().
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
-		Uint64("MsgViewID", recvMsg.ViewID).
+		/*Uint64("MsgViewID", recvMsg.ViewID).*/
 		Msg("[OnPrepared] Received prepared message")
 
 	if recvMsg.BlockNum < consensus.blockNum {
@@ -137,7 +136,7 @@ func (consensus *Consensus) onPrepared(recvMsg *FBFTMessage) {
 		myBlockHash.SetBytes(consensus.blockHash[:])
 		consensus.getLogger().Warn().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
-			Uint64("MsgViewID", recvMsg.ViewID).
+			/*Uint64("MsgViewID", recvMsg.ViewID).*/
 			Msg("[OnPrepared] failed to verify multi signature for prepare phase")
 		return
 	}
@@ -164,7 +163,7 @@ func (consensus *Consensus) onPrepared(recvMsg *FBFTMessage) {
 	recvMsg.Block = []byte{} // save memory space
 	consensus.FBFTLog.AddVerifiedMessage(recvMsg)
 	consensus.getLogger().Debug().
-		Uint64("MsgViewID", recvMsg.ViewID).
+		/*Uint64("MsgViewID", recvMsg.ViewID).*/
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
 		Hex("blockHash", recvMsg.BlockHash[:]).
 		Msg("[OnPrepared] Prepared message and block added")
@@ -220,7 +219,7 @@ func (consensus *Consensus) onPrepared(recvMsg *FBFTMessage) {
 	go func() {
 		// Try process future committed messages and process them in case of receiving committed before prepared
 		curBlockNum := consensus.blockNum
-		for _, committedMsg := range consensus.FBFTLog.GetNotVerifiedCommittedMessages(blockObj.NumberU64(), blockObj.Header().ViewID().Uint64(), blockObj.Hash()) {
+		for _, committedMsg := range consensus.FBFTLog.GetNotVerifiedCommittedMessages(blockObj.NumberU64(), 0, blockObj.Hash()) {
 			if committedMsg != nil {
 				consensus.onCommitted(committedMsg)
 			}
@@ -283,7 +282,7 @@ func (consensus *Consensus) onCommitted(recvMsg *FBFTMessage) {
 		return
 	}
 	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
-		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
+		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), 0)
 	if !aggSig.VerifyHash(mask.AggregatePublic, commitPayload) {
 		consensus.getLogger().Error().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).

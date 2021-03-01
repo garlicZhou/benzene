@@ -56,7 +56,6 @@ func (pm *State) SetCurBlockViewID(viewID uint64) {
 func createTimeout() map[TimeoutType]*utils.Timeout {
 	timeouts := make(map[TimeoutType]*utils.Timeout)
 	timeouts[timeoutConsensus] = utils.NewTimeout(phaseDuration)
-	timeouts[timeoutViewChange] = utils.NewTimeout(viewChangeDuration)
 	timeouts[timeoutBootstrap] = utils.NewTimeout(bootstrapDuration)
 	return timeouts
 }

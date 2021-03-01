@@ -5,8 +5,8 @@ import (
 
 	"github.com/harmony-one/harmony/numeric"
 
-	"github.com/harmony-one/harmony/internal/genesis"
-	"github.com/harmony-one/harmony/internal/params"
+	"benzene/internal/genesis"
+	"benzene/params"
 )
 
 // PartnerSchedule is the long-running public partner sharding

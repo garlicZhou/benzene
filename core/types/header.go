@@ -21,6 +21,8 @@ type Header struct {
 	GasUsed    uint64      `json:"gasUsed"          gencodec:"required"`
 	Time       *big.Int    `json:"timestamp"        gencodec:"required"`
 	ShardID    uint64      `json:"shardID"          gencodec:"required"`
+	LastCommitSignature [96]byte    `json:"lastCommitSignature"  gencodec:"required"`
+	LastCommitBitmap    []byte      `json:"lastCommitBitmap"     gencodec:"required"` // Contains which validator signed
 }
 
 // field type overrides for gencodec

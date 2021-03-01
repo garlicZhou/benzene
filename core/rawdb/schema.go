@@ -79,6 +79,9 @@ var (
 
 	preimageCounter    = metrics.NewRegisteredCounter("db/preimage/total", nil)
 	preimageHitCounter = metrics.NewRegisteredCounter("db/preimage/hits", nil)
+
+	blockCommitSigPrefix         = []byte("block-sig-")
+	lastCommitsKey               = []byte("LastCommits")
 )
 
 const (
@@ -181,4 +184,8 @@ func codeKey(hash common.Hash) []byte {
 // configKey = configPrefix + hash
 func configKey(hash common.Hash) []byte {
 	return append(configPrefix, hash.Bytes()...)
+}
+
+func blockCommitSigKey(number uint64) []byte {
+	return append(blockCommitSigPrefix, encodeBlockNumber(number)...)
 }

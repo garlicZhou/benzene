@@ -1,11 +1,9 @@
 package consensus
 
 import (
-	"bytes"
-	"encoding/binary"
-
 	msg_pb "benzene/api/proto/message"
 	"benzene/core/types"
+	"bytes"
 	protobuf "github.com/golang/protobuf/proto"
 	libbls "github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/harmony-one/harmony/crypto/bls"
@@ -141,18 +139,17 @@ func (consensus *Consensus) onPreparedSanityChecks(
 }
 
 // TODO: leo: move the sanity check to p2p message validation
-func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
+/*func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
 	// TODO: if difference is only one, new leader can still propose the same committed block to avoid another view change
 	// TODO: new leader catchup without ignore view change message
 
 	consensus.getLogger().Info().
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
-		Uint64("MyViewChangingID", consensus.GetViewChangingID()).
 		Uint64("MsgViewChangingID", recvMsg.ViewID).
 		Interface("SendPubKeys", recvMsg.SenderPubkeys).
 		Msg("[onViewChangeSanityCheck]")
-
-	if consensus.blockNum > recvMsg.BlockNum {
+*/
+	/*if consensus.blockNum > recvMsg.BlockNum {
 		consensus.getLogger().Debug().
 			Msg("[onViewChange] Message BlockNum Is Low")
 		return false
@@ -161,7 +158,7 @@ func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
 		consensus.getLogger().Warn().
 			Msg("[onViewChangeSanityCheck] MsgBlockNum is different from my BlockNumber")
 		return false
-	}
+	}*/
 	/*if consensus.IsViewChangingMode() &&
 		consensus.GetCurBlockViewID() > recvMsg.ViewID {
 		consensus.getLogger().Warn().Uint64("curBlockViewID", consensus.GetCurBlockViewID()).
@@ -169,31 +166,31 @@ func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
 			Msg("[onViewChangeSanityCheck] ViewChanging ID Is Low")
 		return false
 	}*/
-	if recvMsg.ViewID > consensus.GetViewChangingID() && recvMsg.ViewID-consensus.GetViewChangingID() > MaxViewIDDiff {
+	/*if recvMsg.ViewID > consensus.GetViewChangingID() && recvMsg.ViewID-consensus.GetViewChangingID() > MaxViewIDDiff {
 		consensus.getLogger().Debug().
 			Msg("[onViewChangeSanityCheck] Received viewID that is MaxViewIDDiff (249) further from the current viewID!")
 		return false
-	}
+	}*/
 
-	if !recvMsg.HasSingleSender() {
+	/*if !recvMsg.HasSingleSender() {
 		consensus.getLogger().Error().Msg("[onViewChangeSanityCheck] zero or multiple signers in view change message.")
 		return false
-	}
-	senderKey := recvMsg.SenderPubkeys[0]
+	}*/
+	//senderKey := recvMsg.SenderPubkeys[0]
 
-	viewIDHash := make([]byte, 8)
+	/*viewIDHash := make([]byte, 8)
 	binary.LittleEndian.PutUint64(viewIDHash, recvMsg.ViewID)
 	if !recvMsg.ViewidSig.VerifyHash(senderKey.Object, viewIDHash) {
 		consensus.getLogger().Warn().
 			Uint64("MsgViewID", recvMsg.ViewID).
 			Msg("[onViewChangeSanityCheck] Failed to Verify viewID Signature")
 		return false
-	}
+	}*/
 	return true
 }
 
 // TODO: leo: move the sanity check to p2p message validation
-func (consensus *Consensus) onNewViewSanityCheck(recvMsg *FBFTMessage) bool {
+/*func (consensus *Consensus) onNewViewSanityCheck(recvMsg *FBFTMessage) bool {
 	if recvMsg.ViewID < consensus.GetCurBlockViewID() {
 		consensus.getLogger().Warn().
 			Uint64("LastSuccessfulConsensusViewID", consensus.GetCurBlockViewID()).
@@ -202,4 +199,4 @@ func (consensus *Consensus) onNewViewSanityCheck(recvMsg *FBFTMessage) bool {
 		return false
 	}
 	return true
-}
+}*/

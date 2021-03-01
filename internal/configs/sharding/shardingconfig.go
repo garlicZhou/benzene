@@ -8,7 +8,7 @@ import (
 
 	"github.com/harmony-one/harmony/numeric"
 
-	"github.com/harmony-one/harmony/internal/genesis"
+	"benzene/internal/genesis"
 )
 
 // Schedule returns the sharding configuration instance for the given

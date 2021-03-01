@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"benzene/internal/utils"
+	"github.com/ethereum/go-ethereum/log"
 	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
 	"github.com/harmony-one/harmony/numeric"
 )
@@ -40,11 +41,8 @@ func (v *uniformVoteWeight) AddNewVote(
 // IsQuorumAchieved ..
 func (v *uniformVoteWeight) IsQuorumAchieved(p Phase) bool {
 	r := v.SignersCount(p) >= v.TwoThirdsSignersCount()
-	utils.Logger().Info().Str("phase", p.String()).
-		Int64("signers-count", v.SignersCount(p)).
-		Int64("threshold", v.TwoThirdsSignersCount()).
-		Int64("participants", v.ParticipantsCount()).
-		Msg("Quorum details")
+	log.Info("Quorum details", "phase", p.String(),"signers-count", v.SignersCount(p), "threshold", v.TwoThirdsSignersCount(),
+		"participants", v.ParticipantsCount())
 	return r
 }
 
@@ -57,12 +55,11 @@ func (v *uniformVoteWeight) IsQuorumAchievedByMask(mask *bls_cosi.Mask) bool {
 	currentTotalPower := utils.CountOneBits(mask.Bitmap)
 	if currentTotalPower < threshold {
 		const msg = "[IsQuorumAchievedByMask] Not enough voting power: need %+v, have %+v"
-		utils.Logger().Warn().Msgf(msg, threshold, currentTotalPower)
+		log.Warn(msg, threshold, currentTotalPower)
 		return false
 	}
 	const msg = "[IsQuorumAchievedByMask] have enough voting power: need %+v, have %+v"
-	utils.Logger().Debug().
-		Msgf(msg, threshold, currentTotalPower)
+	log.Debug(msg, threshold, currentTotalPower)
 	return true
 }
 

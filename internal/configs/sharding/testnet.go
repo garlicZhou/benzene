@@ -3,8 +3,8 @@ package shardingconfig
 import (
 	"math/big"
 
-	"github.com/harmony-one/harmony/internal/genesis"
-	"github.com/harmony-one/harmony/internal/params"
+	"benzene/internal/genesis"
+	"benzene/params"
 	"github.com/harmony-one/harmony/numeric"
 )
 

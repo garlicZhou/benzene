@@ -3,7 +3,7 @@ package consensus
 import (
 	"time"
 
-	nodeconfig "benzene/internal/configs/node"
+	nodeconfig "benzene/internal/configs"
 	"github.com/harmony-one/harmony/crypto/bls"
 
 	"benzene/consensus/signature"
@@ -71,7 +71,7 @@ func (consensus *Consensus) announce(block *types.Block) {
 			key.Pri.SignHash(consensus.blockHash[:]),
 			block.Hash(),
 			block.NumberU64(),
-			block.Header().ViewID().Uint64(),
+		    0,
 		); err != nil {
 			return
 		}
@@ -111,9 +111,9 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 	consensus.mutex.Lock()
 	defer consensus.mutex.Unlock()
 
-	if !consensus.isRightBlockNumAndViewID(recvMsg) {
+	/*if !consensus.isRightBlockNumAndViewID(recvMsg) {
 		return
-	}
+	}*/
 
 	blockHash := consensus.blockHash[:]
 	prepareBitmap := consensus.prepareBitmap
@@ -241,7 +241,7 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 		return
 	}
 	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
-		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
+		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), 0)
 	logger = logger.With().
 		Uint64("MsgViewID", recvMsg.ViewID).
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
@@ -268,7 +268,7 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 	if _, err := consensus.Decider.AddNewVote(
 		quorum.Commit, recvMsg.SenderPubkeys,
 		&sign, recvMsg.BlockHash,
-		recvMsg.BlockNum, recvMsg.ViewID,
+		recvMsg.BlockNum, 0,
 	); err != nil {
 		return
 	}

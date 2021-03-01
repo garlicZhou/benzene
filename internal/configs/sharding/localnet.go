@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"benzene/params"
 	"github.com/harmony-one/harmony/numeric"
 
-	"github.com/harmony-one/harmony/internal/genesis"
+	"benzene/internal/genesis"
 )
 
 // LocalnetSchedule is the local testnet sharding

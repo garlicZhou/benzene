@@ -29,7 +29,7 @@ type TimeoutType int
 
 const (
 	timeoutConsensus TimeoutType = iota
-	timeoutViewChange
+	//timeoutViewChange
 	timeoutBootstrap
 )
 
@@ -37,8 +37,8 @@ func (t TimeoutType) String() string {
 	switch t {
 	case timeoutConsensus:
 		return "timeoutConsensus"
-	case timeoutViewChange:
-		return "timeoutViewChange"
+	/*case timeoutViewChange:
+		return "timeoutViewChange"*/
 	case timeoutBootstrap:
 		return "timeoutBootstrap"
 	}

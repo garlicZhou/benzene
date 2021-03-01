@@ -12,7 +12,7 @@ import (
 	"github.com/harmony-one/harmony/shard"
 
 	common2 "benzene/internal/common"
-	"benzene/internal/utils"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/common"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/harmony-one/harmony/crypto/bls"
@@ -220,7 +220,7 @@ func Compute(subComm *shard.Committee, epoch *big.Int) (*Roster, error) {
 		if _, ok := roster.Voters[staked[i].BLSPublicKey]; !ok {
 			roster.Voters[staked[i].BLSPublicKey] = &member
 		} else {
-			utils.Logger().Debug().Str("blsKey", staked[i].BLSPublicKey.Hex()).Msg("Duplicate BLS key found")
+			log.Debug("Duplicate BLS key found", "blsKey", staked[i].BLSPublicKey.Hex())
 		}
 	}
 

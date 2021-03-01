@@ -5,19 +5,18 @@ import (
 	"benzene/consensus/quorum"
 	"benzene/consensus/signature"
 	"benzene/core/types"
-	nodeconfig "benzene/internal/configs/node"
-	"benzene/internal/utils"
+	nodeconfig "benzene/internal/configs"
 	"benzene/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 func (consensus *Consensus) didReachPrepareQuorum() error {
-	logger := utils.Logger()
-	logger.Info().Msg("[OnPrepare] Received Enough Prepare Signatures")
+	log.Info("[OnPrepare] Received Enough Prepare Signatures")
 	leaderPriKey, err := consensus.GetConsensusLeaderPrivateKey()
 	if err != nil {
-		utils.Logger().Warn().Err(err).Msg("[OnPrepare] leader not found")
+		log.Warn("[OnPrepare] leader not found")
 		return err
 	}
 	// Construct and broadcast prepared message
@@ -47,7 +46,7 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 		return err
 	}
 	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
-		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
+		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), 0)
 
 	// so by this point, everyone has committed to the blockhash of this block
 	// in prepare and so this is the actual block.
@@ -63,7 +62,7 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 			key.Pri.SignHash(commitPayload),
 			blockObj.Hash(),
 			blockObj.NumberU64(),
-			blockObj.Header().ViewID().Uint64(),
+			0,
 		); err != nil {
 			return err
 		}

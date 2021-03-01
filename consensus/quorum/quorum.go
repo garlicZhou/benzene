@@ -2,8 +2,6 @@ package quorum
 
 import (
 	"fmt"
-	"github.com/harmony-one/harmony/shard"
-	"math/big"
 
 	"github.com/harmony-one/harmony/crypto/bls"
 

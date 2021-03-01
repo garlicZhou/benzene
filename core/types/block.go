@@ -17,6 +17,7 @@
 package types
 
 import (
+	"benzene/internal/utils"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
@@ -69,6 +70,8 @@ type Block struct {
 	// caches
 	hash atomic.Value
 	size atomic.Value
+	// Commit Signatures/Bitmap
+	commitSigAndBitmap []byte
 }
 
 // "external" block encoding. used for eth protocol, etc.
@@ -245,3 +248,21 @@ func (b *Block) Hash() common.Hash {
 
 // Blocks is an array of Block.
 type Blocks []*Block
+
+// SetCurrentCommitSig sets the commit group signature that signed on this block.
+func (b *Block) SetCurrentCommitSig(sigAndBitmap []byte) {
+	if len(sigAndBitmap) <= 96 {
+		utils.Logger().Warn().
+			Int("srcLen", len(sigAndBitmap)).
+			Int("dstLen", len(b.header.LastCommitSignature)).
+			Msg("SetCurrentCommitSig: sig size mismatch")
+	}
+	b.commitSigAndBitmap = sigAndBitmap
+}
+
+// GetCurrentCommitSig get the commit group signature that signed on this block.
+func (b *Block) GetCurrentCommitSig() []byte {
+	return b.commitSigAndBitmap
+}
+
+

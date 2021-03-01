@@ -149,6 +149,7 @@ type BlockChain struct {
 	blockCache    *lru.Cache     // Cache for the most recent entire blocks
 	txLookupCache *lru.Cache     // Cache for the most recent transaction lookup data.
 	futureBlocks  *lru.Cache     // future blocks are blocks added for later processing
+	lastCommitsCache              *lru.Cache
 
 	quit          chan struct{}  // blockchain quit channel
 	wg            sync.WaitGroup // chain processing wait group for shutting down
@@ -1956,4 +1957,28 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 // block processing has started while false means it has stopped.
 func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscription {
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
+}
+
+// WriteCommitSig saves the commits signatures signed on a block.
+func (bc *BlockChain) WriteCommitSig(blockNum uint64, lastCommits []byte) error {
+	err := rawdb.WriteBlockCommitSig(bc.db, blockNum, lastCommits)
+	if err != nil {
+		return err
+	}
+	bc.lastCommitsCache.Add(blockNum, lastCommits)
+	return nil
+}
+
+
+// ReadCommitSig retrieves the commit signature on a block.
+func (bc *BlockChain) ReadCommitSig(blockNum uint64) ([]byte, error) {
+	if cached, ok := bc.lastCommitsCache.Get(blockNum); ok {
+		lastCommits := cached.([]byte)
+		return lastCommits, nil
+	}
+	lastCommits, err := rawdb.ReadBlockCommitSig(bc.db, blockNum)
+	if err != nil {
+		return nil, err
+	}
+	return lastCommits, nil
 }

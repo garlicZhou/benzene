@@ -319,7 +319,7 @@ func (log *FBFTLog) GetMessagesByTypeSeqView(typ msg_pb.MessageType, blockNum ui
 }
 
 // FindMessageByMaxViewID returns the message that has maximum ViewID
-func (log *FBFTLog) FindMessageByMaxViewID(msgs []*FBFTMessage) *FBFTMessage {
+/*func (log *FBFTLog) FindMessageByMaxViewID(msgs []*FBFTMessage) *FBFTMessage {
 	if len(msgs) == 0 {
 		return nil
 	}
@@ -333,7 +333,7 @@ func (log *FBFTLog) FindMessageByMaxViewID(msgs []*FBFTMessage) *FBFTMessage {
 	}
 	return msgs[maxIdx]
 }
-
+*/
 // ParseFBFTMessage parses FBFT message into FBFTMessage structure
 func (consensus *Consensus) ParseFBFTMessage(msg *msg_pb.Message) (*FBFTMessage, error) {
 	// TODO Have this do sanity checks on the message please
